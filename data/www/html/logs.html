@@ -104,11 +104,28 @@
           <input type="text" class="form-control bg-dark text-light border-secondary" id="logSearchInput" placeholder="Search logs...">
         </div>
       </div>
-      <div class="col-auto ms-auto">
+      <div class="col-auto">
         <div class="form-check form-switch">
           <input class="form-check-input" type="checkbox" id="autoRefreshToggle">
           <label class="form-check-label" for="autoRefreshToggle">Auto-refresh (5s)</label>
         </div>
+      </div>
+      <div class="col-auto ms-auto">
+        <button class="btn btn-outline-success btn-sm" id="downloadLogsBtn" title="Download logs as text file">
+          <i class="fas fa-download me-1"></i>Download
+        </button>
+      </div>
+    </div>
+    
+    <!-- Stack filter badge (shown when filtering by stack) -->
+    <div class="row mb-2" id="stackFilterRow" style="display: none;">
+      <div class="col-auto mx-auto">
+        <span class="badge bg-info">
+          <i class="fas fa-filter me-1"></i>Filtered by: <span id="stackFilterName"></span>
+          <button class="btn btn-sm btn-link text-white p-0 ms-2" onclick="clearStackFilter()" title="Clear filter">
+            <i class="fas fa-times"></i>
+          </button>
+        </span>
       </div>
     </div>
     
@@ -125,6 +142,64 @@
   <script>
     let rawLogData = [];
     let autoRefreshInterval = null;
+    let currentStackFilter = null;
+
+    // Download logs as text file
+    function downloadLogs() {
+      const searchText = document.getElementById('logSearchInput').value.toLowerCase();
+      let logsToDownload = rawLogData;
+      
+      // Apply search filter if active
+      if (searchText) {
+        logsToDownload = logsToDownload.filter(line => 
+          line.toLowerCase().includes(searchText)
+        );
+      }
+      
+      // Apply stack filter if active
+      if (currentStackFilter) {
+        logsToDownload = logsToDownload.filter(line => 
+          line.toLowerCase().includes(currentStackFilter.toLowerCase())
+        );
+      }
+      
+      // Reverse to show newest on top
+      logsToDownload = logsToDownload.reverse();
+      
+      const logContent = logsToDownload.join('\n');
+      const blob = new Blob([logContent], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const timestamp = new Date().toISOString().slice(0,19).replace(/[:-]/g, '');
+      a.href = url;
+      a.download = `whalemate-logs-${timestamp}.txt`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    // Clear stack filter
+    function clearStackFilter() {
+      currentStackFilter = null;
+      document.getElementById('stackFilterRow').style.display = 'none';
+      // Remove stack param from URL without reloading
+      const url = new URL(window.location);
+      url.searchParams.delete('stack');
+      window.history.replaceState({}, '', url);
+      displayLogs();
+    }
+
+    // Check for stack filter in URL
+    function checkUrlForStackFilter() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const stackName = urlParams.get('stack');
+      if (stackName) {
+        currentStackFilter = decodeURIComponent(stackName);
+        document.getElementById('stackFilterName').textContent = currentStackFilter;
+        document.getElementById('stackFilterRow').style.display = 'block';
+      }
+    }
 
     // Colorize log lines based on level
     function colorizeLog(text) {
@@ -166,6 +241,13 @@
       }
       
       let filteredLogs = rawLogData;
+      
+      // Filter by stack name if set
+      if (currentStackFilter) {
+        filteredLogs = filteredLogs.filter(line => 
+          line.toLowerCase().includes(currentStackFilter.toLowerCase())
+        );
+      }
       
       // Filter by search text
       if (searchText) {
@@ -219,6 +301,9 @@
 
     // Initialize
     document.addEventListener('DOMContentLoaded', () => {
+      // Check for stack filter in URL
+      checkUrlForStackFilter();
+      
       loadLogs();
       
       // Set up search listener
@@ -232,6 +317,9 @@
           clearInterval(autoRefreshInterval);
         }
       });
+      
+      // Download button
+      document.getElementById('downloadLogsBtn').addEventListener('click', downloadLogs);
     });
   </script>
 </body>

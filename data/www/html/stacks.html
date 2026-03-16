@@ -69,9 +69,19 @@
     </nav>
     <!-- Page Content -->
     <div class="container py-4">
-        <h2 class="mb-4 text-center">📦 Portainer Stacks</h2>
-        <!-- Portainer Stacks Table -->
-        <div class="card bg-dark border-light mb-5">
+        <h2 class="mb-4 text-center">📦 Portainer Stacks <span class="float-end">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-secondary active" id="tableViewBtn" title="Table View" onclick="setStackView('table')">
+                        <i class="fas fa-table"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" id="cardViewBtn" title="Card View" onclick="setStackView('card')">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                </div>
+            </span></h2>
+        
+        <!-- Portainer Stacks Table View -->
+        <div class="card bg-dark border-light mb-5" id="portainerTableView">
             <div class="card-body">
                 <table class="table table-dark table-striped table-hover mb-0">
                     <thead class="table-secondary text-dark">
@@ -94,9 +104,26 @@
                 </table>
             </div>
         </div>
+        
+        <!-- Portainer Stacks Card View -->
+        <div class="card bg-dark border-light mb-5" id="portainerCardView" style="display: none;">
+            <div class="card-body">
+                <div class="row g-3" id="portainer-cards-container"></div>
+            </div>
+        </div>
     </div>
+    
     <div class="container py-4">
-        <h2 class="mb-4 text-center"><i class="fas fa-ship me-2 text-primary"></i> Docker Compose Stacks</h2>
+        <h2 class="mb-4 text-center"><i class="fas fa-ship me-2 text-primary"></i> Docker Compose Stacks <span class="float-end">
+                <div class="btn-group btn-group-sm" role="group">
+                    <button class="btn btn-outline-secondary active" id="dockerTableViewBtn" title="Table View" onclick="setDockerStackView('table')">
+                        <i class="fas fa-table"></i>
+                    </button>
+                    <button class="btn btn-outline-secondary" id="dockerCardViewBtn" title="Card View" onclick="setDockerStackView('card')">
+                        <i class="fas fa-th-large"></i>
+                    </button>
+                </div>
+            </span></h2>
         <!-- Docker Stacks Table -->
         <div class="card bg-dark border-light mb-5">
             <div class="card-body">
@@ -118,6 +145,13 @@
                         </tr>
                     </tbody>
                 </table>
+            </div>
+        </div>
+        
+        <!-- Docker Compose Stacks Card View -->
+        <div class="card bg-dark border-light mb-5" id="dockerCardView" style="display: none;">
+            <div class="card-body">
+                <div class="row g-3" id="docker-cards-container"></div>
             </div>
         </div>
     </div>
@@ -356,6 +390,152 @@
         function viewVersionHistory(stackId, stackName) {
             window.location.href = `versioning.html?stack=${stackId}`;
         }
+        
+        // View update logs for a stack (filtered by stack name)
+        function viewUpdateLogs(stackName) {
+            window.location.href = `logs.html?stack=${encodeURIComponent(stackName)}`;
+        }
+        
+        // Clear all versions for a stack from stacks page
+        async function clearVersionsFromStacks(stackId, stackName) {
+            if (!confirm(`Are you sure you want to delete ALL version history for "${stackName}"?\n\nThis action cannot be undone!`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/portainer/clear-versions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ StackID: parseInt(stackId) })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`All versions cleared for "${stackName}"`);
+                } else {
+                    throw new Error(data.error || 'Failed to clear versions');
+                }
+            } catch (error) {
+                console.error('Clear versions error:', error);
+                alert('Failed to clear versions: ' + error.message);
+            }
+        }
+        
+        // Toggle between table and card view for Portainer stacks
+        function setStackView(view) {
+            const tableView = document.getElementById('portainerTableView');
+            const cardView = document.getElementById('portainerCardView');
+            const tableBtn = document.getElementById('tableViewBtn');
+            const cardBtn = document.getElementById('cardViewBtn');
+            
+            if (view === 'card') {
+                tableView.style.display = 'none';
+                cardView.style.display = 'block';
+                tableBtn.classList.remove('active');
+                cardBtn.classList.add('active');
+                renderPortainerCards();
+            } else {
+                tableView.style.display = 'block';
+                cardView.style.display = 'none';
+                tableBtn.classList.add('active');
+                cardBtn.classList.remove('active');
+            }
+            localStorage.setItem('whalemate-stack-view', view);
+        }
+        
+        // Toggle between table and card view for Docker Compose stacks
+        function setDockerStackView(view) {
+            const tableView = document.getElementById('docker-stacks-table').closest('.card');
+            const cardView = document.getElementById('dockerCardView');
+            const tableBtn = document.getElementById('dockerTableViewBtn');
+            const cardBtn = document.getElementById('dockerCardViewBtn');
+            
+            if (view === 'card') {
+                tableView.style.display = 'none';
+                cardView.style.display = 'block';
+                tableBtn.classList.remove('active');
+                cardBtn.classList.add('active');
+                renderDockerCards();
+            } else {
+                tableView.style.display = 'block';
+                cardView.style.display = 'none';
+                tableBtn.classList.add('active');
+                cardBtn.classList.remove('active');
+            }
+            localStorage.setItem('whalemate-docker-stack-view', view);
+        }
+        
+        // Render Portainer stacks as cards
+        function renderPortainerCards() {
+            const container = document.getElementById('portainer-cards-container');
+            if (!portainerStacksData || portainerStacksData.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center text-muted py-5">No stacks found</div>';
+                return;
+            }
+            
+            container.innerHTML = portainerStacksData.map(stack => `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card bg-secondary bg-dark border-light h-100">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-box me-2"></i>${stack.Name}</h5>
+                            <p class="card-text small">
+                                <div class="mb-2"><strong>Status:</strong> ${getStatusBadge(stack.Status)}</div>
+                                <div class="mb-2"><strong>Update:</strong> <span id="card-status-${stack.Id}">${getUpdateBadge()}</span></div>
+                                <div class="mb-2"><strong>Backup:</strong> <span id="card-backup-${stack.Id}">${getBackupBadge(stack.Id)}</span></div>
+                                <div class="mb-2"><strong>Last Updated:</strong> ${formatDate(stack.UpdateDate)}</div>
+                            </p>
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <button class="btn btn-outline-primary" title="View compose file history" onclick="viewVersionHistory('${stack.Id}', '${stack.Name}')">
+                                    <i class="fas fa-history"></i> Versions
+                                </button>
+                                <button class="btn btn-outline-info" title="View update logs" onclick="viewUpdateLogs('${stack.Name}')">
+                                    <i class="fas fa-scroll"></i> Logs
+                                </button>
+                                <button class="btn btn-outline-success" title="Backup compose file (not volumes)" onclick="backupStackNow('${stack.Id}', '${stack.Name}')">
+                                    <i class="fas fa-save"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" title="Clear all versions" onclick="clearVersionsFromStacks('${stack.Id}', '${stack.Name}')">
+                                    <i class="fas fa-trash-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Render Docker Compose stacks as cards
+        function renderDockerCards() {
+            const container = document.getElementById('docker-cards-container');
+            if (!dockerStacksData || dockerStacksData.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center text-muted py-5">No stacks found</div>';
+                return;
+            }
+            
+            container.innerHTML = dockerStacksData.map(stack => `
+                <div class="col-md-6 col-lg-4">
+                    <div class="card bg-secondary bg-dark border-light h-100">
+                        <div class="card-body">
+                            <h5 class="card-title"><i class="fas fa-ship me-2"></i>${stack.Name}</h5>
+                            <p class="card-text small">
+                                <div class="mb-2"><strong>Status:</strong> ${getDockerStatusBadge(stack.Status)}</div>
+                                <div class="mb-2"><strong>Config:</strong> ${stack.ConfigFiles || 'N/A'}</div>
+                            </p>
+                            <div class="btn-group btn-group-sm w-100" role="group">
+                                <button class="btn btn-outline-info" title="View update logs" onclick="viewUpdateLogs('${stack.Name}')">
+                                    <i class="fas fa-scroll"></i> Logs
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Store stacks data globally for card rendering
+        let portainerStacksData = [];
+        let dockerStacksData = [];
         // Load Portainer stacks data with throttled status requests
         async function loadPortainerStacks() {
             try {
@@ -374,8 +554,14 @@
                 <tr><td colspan="8" class="text-center py-5 text-bg-info">
                 No stacks found
                 </td></tr>`;
+                    portainerStacksData = [];
+                    renderPortainerCards();
                     return;
                 }
+                
+                // Store data globally for card view
+                portainerStacksData = data.data;
+                
                 // Create table with loading placeholders first
                 const tableHTML = data.data.map(stack => `
             <tr class="align-middle">
@@ -392,6 +578,9 @@
           <div class="btn-group btn-group-sm" role="group">
               <button class="btn btn-outline-primary" title="View compose file history" onclick="viewVersionHistory('${stack.Id}', '${stack.Name}')">
                   <i class="fas fa-history"></i>
+              </button>
+              <button class="btn btn-outline-info" title="View update logs" onclick="viewUpdateLogs('${stack.Name}')">
+                  <i class="fas fa-scroll"></i>
               </button>
               <button class="btn btn-outline-success" title="Backup compose file (not volumes)" onclick="backupStackNow('${stack.Id}', '${stack.Name}')">
                   <i class="fas fa-save"></i>
@@ -461,8 +650,13 @@
                 <tr><td colspan="7" class="text-center py-5 text-bg-info">
                 No stacks found
                 </td></tr>`;
+                    dockerStacksData = [];
+                    renderDockerCards();
                     return;
                 }
+                
+                // Store data globally for card view
+                dockerStacksData = stacks;
                 // Fetch update status for all Docker Compose stacks
                 const updateStatuses = await fetchDockerUpdateStatus();
                 // Create a map of update status by stack name for quick lookup
@@ -512,8 +706,8 @@
                             <td>${getDockerStatusBadge(stack.Status)}</td>
                             <td>
                                 <div class="btn-group btn-group-sm" role="group">
-                                    <button class="btn btn-outline-primary" title="View Config" onclick="alert('Docker Compose versioning coming soon!')">
-                                        <i class="fas fa-history"></i>
+                                    <button class="btn btn-outline-info" title="View update logs" onclick="viewUpdateLogs('${stack.Name}')">
+                                        <i class="fas fa-scroll"></i>
                                     </button>
                                 </div>
                             </td>

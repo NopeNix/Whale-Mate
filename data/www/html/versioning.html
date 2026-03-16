@@ -146,6 +146,15 @@
                 </button>
             </div>
         </div>
+        
+        <!-- Clear Versions Button (shown when stack selected) -->
+        <div class="row mb-4" id="clearVersionsRow" style="display: none;">
+            <div class="col-md-6 mx-auto">
+                <button class="btn btn-outline-danger w-100" id="clearVersionsBtn">
+                    <i class="fas fa-trash-alt me-2"></i>Clear All Versions
+                </button>
+            </div>
+        </div>
 
         <!-- Instruction: Select a stack -->
         <div class="row mb-4">
@@ -483,7 +492,50 @@
                 alert('Backup failed: ' + error.message);
             } finally {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-save me-2"></i>Backup Now';
+                btn.innerHTML = '<i class="fas fa-save me-2"></i>Backup Compose File';
+            }
+        }
+        
+        // Clear all versions for a stack
+        async function clearAllVersions() {
+            const stackId = document.getElementById('stackSelect').value;
+            if (!stackId) {
+                return;
+            }
+            
+            const stackName = selectedStackName || 'this stack';
+            
+            if (!confirm(`Are you sure you want to delete ALL version history for "${stackName}"?\n\nThis action cannot be undone!`)) {
+                return;
+            }
+            
+            const btn = document.getElementById('clearVersionsBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Clearing...';
+
+            try {
+                const response = await fetch('/api/portainer/clear-versions', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ StackID: parseInt(stackId) })
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to clear versions');
+                }
+
+                // Reload versions
+                await loadVersionHistory(stackId);
+                
+                alert('All versions cleared successfully!');
+            } catch (error) {
+                console.error('Clear versions error:', error);
+                alert('Failed to clear versions: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-trash-alt me-2"></i>Clear All Versions';
             }
         }
 
@@ -585,15 +637,18 @@
                 const stackId = e.target.value;
                 const latestActivitySection = document.getElementById('latestActivitySection');
                 const versionTimeline = document.getElementById('versionTimeline');
+                const clearVersionsRow = document.getElementById('clearVersionsRow');
                 
                 if (stackId) {
                     // Hide latest activity, show timeline
                     latestActivitySection.style.display = 'none';
                     versionTimeline.style.display = 'block';
+                    clearVersionsRow.style.display = 'block';
                 } else {
                     // Show latest activity, hide timeline
                     latestActivitySection.style.display = 'block';
                     versionTimeline.style.display = 'none';
+                    clearVersionsRow.style.display = 'none';
                     loadLatestActivity();
                 }
                 loadVersionHistory(stackId);
@@ -601,6 +656,9 @@
 
             // Backup now button
             document.getElementById('backupNowBtn').addEventListener('click', backupNow);
+            
+            // Clear versions button
+            document.getElementById('clearVersionsBtn').addEventListener('click', clearAllVersions);
         });
     </script>
 </body>
