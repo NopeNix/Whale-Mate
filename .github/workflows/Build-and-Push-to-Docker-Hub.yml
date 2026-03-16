@@ -71,11 +71,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: |
             nopenix/whale-mate:${{ steps.version.outputs.floating }}
             nopenix/whale-mate:${{ steps.version.outputs.version }}
-          build-args: |
-            BUILD_VERSION
-            BUILD_DATE
