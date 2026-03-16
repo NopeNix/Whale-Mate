@@ -5,3 +5,4 @@ test:ingore.ps1
 docker-compose-test.yml
 teststack/**
 data/db/**
+tmp
