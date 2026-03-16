@@ -1,6 +1,12 @@
 # Auto-Backup Script
 # Checks every minute if stacks have changed and creates backups automatically
 
+# Force unbuffered output
+$OutputEncoding = [System.Text.Encoding]::UTF8
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+Write-Host "[Auto-Backup] Script started"
+
 $versionsDir = "/data/versions"
 $hashDbFile = "/data/db/stack-hashes.json"
 
@@ -60,12 +66,14 @@ function Get-ContentHash {
 # Get stack hashes from Portainer
 function Get-PortainerStackHashes {
     if (-not $env:PortainerBaseAddress -or -not $env:PortainerAPIToken) {
+        Write-Host "[Auto-Backup] Skipping - no Portainer credentials"
         return @{}
     }
 
     $Hashes = @{}
     
     try {
+        Write-Host "[Auto-Backup] Fetching stacks from Portainer..."
         $Headers = @{
             "X-API-KEY" = $env:PortainerAPIToken
         }
@@ -158,11 +166,16 @@ Write-Host "[Auto-Backup] Starting auto-backup service..."
 # Initial wait to let other services start
 Start-Sleep -Seconds 5
 
+Write-Host "[Auto-Backup] Starting check loop..."
+
 while ($true) {
     try {
         # Get current stack hashes
         $currentHashes = Get-PortainerStackHashes
+        Write-Host "[Auto-Backup] Got $($currentHashes.Count) current hashes"
+        
         $previousHashes = Get-StackHashes
+        Write-Host "[Auto-Backup] Got $($previousHashes.Count) previous hashes"
         
         # Check each current stack
         foreach ($stackId in $currentHashes.Keys) {
