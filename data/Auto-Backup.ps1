@@ -223,6 +223,6 @@ while ($true) {
         Write-Host "[Auto-Backup] Error in check loop: $_"
     }
     
-    # Wait 1 minute before next check
-    Start-Sleep -Seconds 60
+    # Wait 20 seconds before next check
+    Start-Sleep -Seconds 20
 }
