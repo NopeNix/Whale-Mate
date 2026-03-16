@@ -156,6 +156,55 @@ Whale Mate automatically backs up your Portainer stack configurations when chang
 4. Select a specific stack to view its complete version history
 5. Click "Backup Now" to manually create a backup
 6. Click "View" on any version to see its content
+7. Click "Restore" to restore a previous backup (requires confirmation)
+
+### Restore Feature
+
+The restore feature allows you to revert a Portainer stack to a previous backup version:
+
+- **Restore from Latest Backups**: On the landing page, click "Restore" next to any backup
+- **Restore from Version Timeline**: Select a stack, then click "Restore" on any version
+- **Confirmation Required**: Every restore requires explicit confirmation to prevent accidental restores
+
+## ⚠️ Security Considerations
+
+**Important:** This section applies if you're using Portainer integration.
+
+### Web Interface Security
+
+The Whale Mate web interface currently does **not** include built-in authentication. This means:
+
+- **Plain HTTP**: By default, the interface runs on plain HTTP (not HTTPS)
+- **No Access Control**: Anyone with network access can view and manage stacks
+- **Credentials in Environment Variables**: Portainer API tokens are stored as environment variables, which may be visible in:
+  - Process environment listings
+  - Docker container inspect
+  - Log files (if accidentally logged)
+
+### Recommended Security Measures
+
+To secure your deployment:
+
+1. **Use a Reverse Proxy with Authentication**:
+   - Place Whale Mate behind a reverse proxy (like nginx, traefik, or Caddy)
+   - Configure HTTP Basic Auth or OAuth2/OIDC authentication at the proxy level
+   - Enable HTTPS at the proxy
+
+2. **Network Isolation**:
+   - Run Whale Mate in an isolated network/VPC
+   - Use firewall rules to restrict access
+   - Consider using Docker network isolation
+
+3. **Environment Variable Protection**:
+   - Use Docker secrets or a secrets manager for the API token
+   - Avoid logging environment variables
+   - Use read-only container deployments where possible
+
+4. **HTTPS Configuration**:
+   - Configure a TLS certificate if exposing Whale Mate externally
+   - Consider using a VPN tunnel instead of direct exposure
+
+**Disclaimer**: Running this software without additional authentication is at your own risk. Always review your deployment configuration and understand the security implications.
 
 ## Troubleshooting
 
