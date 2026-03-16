@@ -146,12 +146,20 @@
             </div>
         </div>
 
+        <!-- Instruction: Select a stack -->
+        <div class="row mb-4">
+            <div class="col-md-8 mx-auto text-center">
+                <p class="text-muted mb-2"><i class="fas fa-info-circle me-1"></i>Select a stack above to view its version history</p>
+            </div>
+        </div>
+
         <!-- Latest Activity (shown when no stack is selected) -->
         <div id="latestActivitySection" class="row mb-4">
             <div class="col-md-8 mx-auto">
                 <div class="card bg-dark border-secondary">
-                    <div class="card-header border-secondary">
-                        <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Latest Activity</h5>
+                    <div class="card-header border-secondary d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Latest Backups</h5>
+                        <small class="text-muted">Most recent backup per stack</small>
                     </div>
                     <div class="card-body p-0">
                         <div id="latestActivityList" class="list-group list-group-flush">
@@ -165,7 +173,7 @@
         </div>
 
         <!-- Version Timeline -->
-        <div id="versionTimeline" class="version-timeline">
+        <div id="versionTimeline" class="version-timeline" style="display: none;">
             <div class="text-center py-5">
                 <p class="text-muted">Select a stack to view its version history</p>
             </div>
@@ -370,12 +378,21 @@
         // Load latest activity across all stacks
         async function loadLatestActivity() {
             const listEl = document.getElementById('latestActivityList');
+            const sectionEl = document.getElementById('latestActivitySection');
             
             try {
                 const response = await fetch('/api/portainer/latest-activity');
                 const data = await response.json();
 
-                if (!data.success || !data.data || data.data.length === 0) {
+                // Ensure data.data is always an array
+                let activities = data.data;
+                if (!activities) {
+                    activities = [];
+                } else if (!Array.isArray(activities)) {
+                    activities = [activities];
+                }
+
+                if (!data.success || activities.length === 0) {
                     listEl.innerHTML = `
                         <div class="list-group-item bg-dark text-muted text-center py-4">
                             <i class="fas fa-inbox fa-2x mb-2"></i>
@@ -384,7 +401,7 @@
                     return;
                 }
 
-                listEl.innerHTML = data.data.map(activity => {
+                listEl.innerHTML = activities.map(activity => {
                     const date = new Date(activity.timestamp);
                     const formattedDate = date.toLocaleString();
                     const fileName = activity.file.split('/').pop();
@@ -422,18 +439,27 @@
             // Load stacks on page load
             loadStacks();
 
+            // Show latest activity, hide timeline initially
+            document.getElementById('latestActivitySection').style.display = 'block';
+            document.getElementById('versionTimeline').style.display = 'none';
+
             // Load latest activity
             loadLatestActivity();
 
             // Listen for stack selection changes
             document.getElementById('stackSelect').addEventListener('change', (e) => {
                 const stackId = e.target.value;
+                const latestActivitySection = document.getElementById('latestActivitySection');
+                const versionTimeline = document.getElementById('versionTimeline');
+                
                 if (stackId) {
-                    // Hide latest activity when a stack is selected
-                    document.getElementById('latestActivitySection').style.display = 'none';
+                    // Hide latest activity, show timeline
+                    latestActivitySection.style.display = 'none';
+                    versionTimeline.style.display = 'block';
                 } else {
-                    // Show latest activity when no stack is selected
-                    document.getElementById('latestActivitySection').style.display = 'block';
+                    // Show latest activity, hide timeline
+                    latestActivitySection.style.display = 'block';
+                    versionTimeline.style.display = 'none';
                     loadLatestActivity();
                 }
                 loadVersionHistory(stackId);

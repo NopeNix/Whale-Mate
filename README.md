@@ -33,6 +33,7 @@ Whale Mate is an automated solution for managing and updating your Portainer sta
 - **Web Dashboard**: Beautiful dark-mode UI to monitor all stacks
 - **CRON Scheduling**: Runs updates on your schedule
 - **NTFY Integration**: Get notified about updates
+- **Version History**: Automatic backup of stack configurations with version control
 
 ## Prerequisites
 
@@ -132,6 +133,29 @@ When configured with NTFY, you'll receive notifications about:
 - Available updates
 - Successful updates
 
+## Version History
+
+Whale Mate automatically backs up your Portainer stack configurations when changes are detected. This feature allows you to:
+
+- **Automatic Backups**: Stacks are automatically backed up when content changes are detected
+- **Manual Backups**: You can manually trigger a backup anytime via the web UI
+- **Version Timeline**: View the complete history of backups for each stack
+
+### How it works:
+
+1. The auto-backup service checks every minute for changes in your Portainer stacks
+2. Changes are detected by comparing SHA-256 hashes and timestamps
+3. When a change is detected, a timestamped backup is created in `/data/versions/<stack-id>/`
+4. You can view all backups in the Versioning section of the web UI
+
+### Accessing Version History:
+
+1. Open the web interface at `http://your-host:8080`
+2. Click on "Versioning" in the navigation
+3. On the landing page, you'll see the latest backups across all stacks
+4. Select a specific stack to view its complete version history
+5. Click "Backup Now" to manually create a backup
+6. Click "View" on any version to see its content
 
 ## Troubleshooting
 
