@@ -21,6 +21,11 @@ Start-PodeServer -Verbose {
         Write-PodeHtmlResponse (Get-Content ($PSScriptRoot + "/html/logs.html") -Raw)
     }
     
+    # Versioning
+    Add-PodeRoute -Method Get -Path "/versioning.html" -ScriptBlock {
+        Write-PodeHtmlResponse (Get-Content ($PSScriptRoot + "/html/versioning.html") -Raw)
+    }
+
     # Portainer: Stacks API
     Add-PodeRoute -Method Get -Path "/api/portainer/stacks" -ScriptBlock {
         if ($null -eq $env:PortainerBaseAddress -or $env:PortainerBaseAddress.trim() -eq "") {
@@ -128,5 +133,91 @@ Start-PodeServer -Verbose {
     # Log API
     Add-PodeRoute -Method Get -Path "/api/logs" -ScriptBlock {
         Write-PodeJsonResponse @{log = (Get-Content "/data/db/updatelog.log")}
+    }
+
+    # ============================================
+    # Versioning API Endpoints
+    # ============================================
+
+    # Get version history for a stack
+    Add-PodeRoute -Method Get -Path "/api/portainer/stack-versions/:StackId" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+
+        $stackId = $WebEvent.Parameters['StackId']
+
+        try {
+            $versions = Get-StackVersionHistory -StackId $stackId
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = $versions
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
+
+    # Get version file content
+    Add-PodeRoute -Method Get -Path "/api/portainer/stack-version-file" -ScriptBlock {
+        $file = $WebEvent.Query['file']
+
+        if (-not $file) {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = "File parameter is required"
+            } -StatusCode 400
+            return
+        }
+
+        try {
+            # Security: only allow files in the versions directory
+            $versionsDir = "/data/versions"
+            $safePath = (Resolve-Path -Path (Join-Path $versionsDir (Split-Path $file -Leaf)) -ErrorAction Stop).Path
+
+            if (-not $safePath.StartsWith($versionsDir)) {
+                throw "Invalid file path"
+            }
+
+            $content = Get-Content -Path $safePath -Raw -ErrorAction Stop
+            Write-PodeTextResponse -Value $content
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
+
+    # Backup a specific stack now
+    Add-PodeRoute -Method Post -Path "/api/portainer/backup-stack" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+
+        $stackId = $WebEvent.Data.StackID
+
+        if (-not $stackId) {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = "StackID is required"
+            } -StatusCode 400
+            return
+        }
+
+        try {
+            Backup-PortainerStack -StackId $stackId
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = @{ message = "Backup created successfully" }
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
     }
 }

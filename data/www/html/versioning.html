@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Whale Mate - Versioning</title>
+    <!-- Bootstrap 5 CDN -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- FontAwesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --empty-state-bg: rgba(30, 30, 30, 0.5);
+        }
+
+        body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        .navbar {
+            border-bottom: 1px solid #2d2d2d;
+        }
+
+        body[data-bs-theme="dark"] .theme-switch:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+        }
+
+        .version-card {
+            transition: transform 0.2s;
+        }
+
+        .version-card:hover {
+            transform: translateY(-2px);
+        }
+
+        .version-timeline {
+            position: relative;
+            padding-left: 30px;
+        }
+
+        .version-timeline::before {
+            content: '';
+            position: absolute;
+            left: 8px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #2d2d2d;
+        }
+
+        .version-item {
+            position: relative;
+            margin-bottom: 20px;
+        }
+
+        .version-item::before {
+            content: '';
+            position: absolute;
+            left: -26px;
+            top: 5px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #0d6efd;
+            border: 2px solid #1a1a1a;
+        }
+
+        .version-item.latest::before {
+            background: #198754;
+        }
+
+        .yaml-preview {
+            max-height: 300px;
+            overflow: auto;
+            background: #0d1117;
+            border-radius: 6px;
+            padding: 15px;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+
+<body class="bg-dark text-light" data-bs-theme="dark">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
+        <div class="container-fluid">
+            <!-- Logo -->
+            <a class="navbar-brand" href="stacks.html">
+                <i class="fas fa-ship me-2 text-primary"></i>
+                <span class="fw-bold">Whale Mate</span>
+            </a>
+            <!-- Toggler for mobile -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNavbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <!-- Menu -->
+            <div class="collapse navbar-collapse justify-content-end" id="topNavbar">
+                <ul class="navbar-nav align-items-center">
+                    <li class="nav-item mx-2">
+                        <a class="nav-link d-flex align-items-center" href="stacks.html">
+                            <i class="fas fa-box me-1"></i>
+                            <span>Stacks</span>
+                        </a>
+                    </li>
+                    <li class="nav-item mx-2">
+                        <a class="nav-link d-flex align-items-center" href="logs.html">
+                            <i class="fas fa-scroll me-1"></i>
+                            <span>Logs</span>
+                        </a>
+                    </li>
+                    <li class="nav-item mx-2">
+                        <a class="nav-link active d-flex align-items-center" href="versioning.html">
+                            <i class="fas fa-code-branch me-1"></i>
+                            <span>Versioning</span>
+                        </a>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <div class="container py-4">
+        <h2 class="mb-4 text-center"><i class="fas fa-code-branch me-2 text-primary"></i> Stack Version History</h2>
+        
+        <!-- Stack Selector -->
+        <div class="row mb-4">
+            <div class="col-md-6 mx-auto">
+                <label for="stackSelect" class="form-label">Select a Stack</label>
+                <select class="form-select bg-dark text-light" id="stackSelect">
+                    <option value="">Loading stacks...</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Backup Now Button -->
+        <div class="row mb-4">
+            <div class="col-md-6 mx-auto">
+                <button class="btn btn-primary w-100" id="backupNowBtn" disabled>
+                    <i class="fas fa-save me-2"></i>Backup Now
+                </button>
+            </div>
+        </div>
+
+        <!-- Version Timeline -->
+        <div id="versionTimeline" class="version-timeline">
+            <div class="text-center py-5">
+                <p class="text-muted">Select a stack to view its version history</p>
+            </div>
+        </div>
+
+        <!-- Version Detail Modal -->
+        <div class="modal fade" id="versionModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                <div class="modal-content bg-dark text-light">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="versionModalTitle">Version Details</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <pre class="yaml-preview" id="versionModalContent"></pre>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Store all stacks
+        let allStacks = [];
+        let versionModal = null;
+
+        // Load stacks for selector
+        async function loadStacks() {
+            try {
+                const response = await fetch('/api/portainer/stacks');
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load stacks');
+                }
+
+                allStacks = data.data || [];
+                
+                // Populate selector
+                const select = document.getElementById('stackSelect');
+                select.innerHTML = '<option value="">-- Select a stack --</option>';
+                
+                allStacks.forEach(stack => {
+                    const option = document.createElement('option');
+                    option.value = stack.Id;
+                    option.textContent = stack.Name;
+                    select.appendChild(option);
+                });
+
+                // Enable backup button
+                document.getElementById('backupNowBtn').disabled = false;
+            } catch (error) {
+                console.error('Error loading stacks:', error);
+                document.getElementById('stackSelect').innerHTML = 
+                    '<option value="">Error loading stacks</option>';
+            }
+        }
+
+        // Load version history for selected stack
+        async function loadVersionHistory(stackId) {
+            const timeline = document.getElementById('versionTimeline');
+            
+            if (!stackId) {
+                timeline.innerHTML = '<div class="text-center py-5"><p class="text-muted">Select a stack to view its version history</p></div>';
+                return;
+            }
+
+            timeline.innerHTML = '<div class="text-center py-5"><i class="fas fa-spinner fa-spin fa-2x"></i></div>';
+
+            try {
+                const response = await fetch(`/api/portainer/stack-versions/${stackId}`);
+                const data = await response.json();
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to load versions');
+                }
+
+                const versions = data.data || [];
+
+                if (versions.length === 0) {
+                    timeline.innerHTML = `
+                        <div class="text-center py-5">
+                            <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">No version history found for this stack</p>
+                            <p class="text-muted small">Backups will be created automatically when stack content changes</p>
+                        </div>`;
+                    return;
+                }
+
+                // Build timeline
+                timeline.innerHTML = versions.map((version, index) => {
+                    const isLatest = index === 0;
+                    const date = new Date(version.timestamp);
+                    const formattedDate = date.toLocaleString();
+                    
+                    return `
+                        <div class="version-item ${isLatest ? 'latest' : ''}">
+                            <div class="card bg-dark border-secondary version-card">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">
+                                                ${isLatest ? '<span class="badge bg-success me-2">Latest</span>' : ''}
+                                                Version ${versions.length - index}
+                                            </h6>
+                                            <small class="text-muted">
+                                                <i class="far fa-clock me-1"></i>${formattedDate}
+                                            </small>
+                                        </div>
+                                        <button class="btn btn-sm btn-outline-primary" 
+                                                onclick="showVersionContent('${version.file}', '${version.timestamp}')">
+                                            <i class="fas fa-eye me-1"></i>View
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                }).join('');
+
+            } catch (error) {
+                console.error('Error loading versions:', error);
+                timeline.innerHTML = `
+                    <div class="text-center py-5 text-danger">
+                        <i class="fas fa-exclamation-triangle fa-2x mb-3"></i>
+                        <p>Error loading version history: ${error.message}</p>
+                    </div>`;
+            }
+        }
+
+        // Show version content in modal
+        function showVersionContent(fileName, timestamp) {
+            // Extract just the filename from the full path
+            const file = fileName.split('/').pop();
+            
+            document.getElementById('versionModalTitle').textContent = `Version: ${file}`;
+            document.getElementById('versionModalContent').textContent = 'Loading...';
+            
+            // Fetch the actual file content
+            fetch(`/api/portainer/stack-version-file?file=${encodeURIComponent(fileName)}`)
+                .then(response => response.text())
+                .then(content => {
+                    document.getElementById('versionModalContent').textContent = content;
+                })
+                .catch(error => {
+                    document.getElementById('versionModalContent').textContent = 'Error loading content: ' + error.message;
+                });
+
+            versionModal.show();
+        }
+
+        // Backup now
+        async function backupNow() {
+            const stackId = document.getElementById('stackSelect').value;
+            if (!stackId) {
+                alert('Please select a stack first');
+                return;
+            }
+
+            const btn = document.getElementById('backupNowBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Backing up...';
+
+            try {
+                const response = await fetch('/api/portainer/backup-stack', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ StackID: parseInt(stackId) })
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Backup failed');
+                }
+
+                // Reload versions
+                await loadVersionHistory(stackId);
+                
+                alert('Backup created successfully!');
+            } catch (error) {
+                console.error('Backup error:', error);
+                alert('Backup failed: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-save me-2"></i>Backup Now';
+            }
+        }
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            versionModal = new bootstrap.Modal(document.getElementById('versionModal'));
+            
+            // Load stacks on page load
+            loadStacks();
+
+            // Listen for stack selection changes
+            document.getElementById('stackSelect').addEventListener('change', (e) => {
+                loadVersionHistory(e.target.value);
+            });
+
+            // Backup now button
+            document.getElementById('backupNowBtn').addEventListener('click', backupNow);
+        });
+    </script>
+</body>
+</html>

@@ -6,3 +6,4 @@ docker-compose-test.yml
 teststack/**
 data/db/**
 tmp
+stack-backups

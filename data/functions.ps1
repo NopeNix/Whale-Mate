@@ -330,3 +330,106 @@ function Get-EscapedJsonString {
         $escaped
     }
 }
+
+# ============================================
+# Versioning Functions
+# ============================================
+
+function Get-StackVersionHistory {
+    <#
+    .SYNOPSIS
+        Gets version history for a specific stack.
+    .PARAMETER StackId
+        The Portainer stack ID.
+    .OUTPUTS
+        Array of version objects with timestamp and file path.
+    #>
+    param (
+        [Parameter(Mandatory = $true)]
+        [int]$StackId
+    )
+
+    $versionsDir = "/data/versions"
+    $stackVersionsDir = Join-Path $versionsDir $StackId
+
+    if (-not (Test-Path $stackVersionsDir)) {
+        return @()
+    }
+
+    # Get all version files, sorted by modification time (newest first)
+    $versionFiles = Get-ChildItem -Path $stackVersionsDir -Filter "*.yml" -ErrorAction SilentlyContinue | 
+                    Sort-Object LastWriteTime -Descending
+
+    $versions = @()
+    foreach ($file in $versionFiles) {
+        $versions += @{
+            timestamp = $file.LastWriteTime.ToString("o")
+            file      = $file.FullName
+            size      = $file.Length
+        }
+    }
+
+    return $versions
+}
+
+function Backup-PortainerStack {
+    <#
+    .SYNOPSIS
+        Creates a backup of a Portainer stack's compose file.
+    .PARAMETER StackId
+        The Portainer stack ID.
+    #>
+    param (
+        [Parameter(Mandatory = $true)]
+        [int]$StackId
+    )
+
+    $versionsDir = "/data/versions"
+    $stackVersionsDir = Join-Path $versionsDir $StackId
+
+    # Create versions directory if it doesn't exist
+    if (-not (Test-Path $versionsDir)) {
+        New-Item -Path $versionsDir -ItemType Directory -Force | Out-Null
+    }
+
+    if (-not (Test-Path $stackVersionsDir)) {
+        New-Item -Path $stackVersionsDir -ItemType Directory -Force | Out-Null
+    }
+
+    # Get the stack from Portainer
+    try {
+        $Headers = @{
+            "X-API-KEY" = $env:PortainerAPIToken
+        }
+        
+        $stack = Invoke-RestMethod -SkipCertificateCheck `
+            -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $StackId) `
+            -Headers $Headers `
+            -Method Get `
+            -ErrorAction Stop
+            
+        # Get the stack file content
+        $stackFile = Invoke-RestMethod -SkipCertificateCheck `
+            -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $StackId + "/file") `
+            -Headers $Headers `
+            -Method Get `
+            -ErrorAction Stop
+            
+        $stackFileContent = $stackFile.StackFileContent
+        
+        # Create backup filename with timestamp
+        $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+        $safeStackName = $stack.Name -replace '[^\w\-]', '_'
+        $backupFileName = "${safeStackName}_${timestamp}.yml"
+        $backupFilePath = Join-Path $stackVersionsDir $backupFileName
+        
+        # Save the backup
+        $stackFileContent | Out-File -FilePath $backupFilePath -Encoding UTF8 -Force
+        
+        Write-Output "Backup created: $backupFilePath"
+    }
+    catch {
+        Write-Error ("Failed to backup stack: " + $_.Exception.Message)
+        throw
+    }
+}
