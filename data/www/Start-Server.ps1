@@ -276,13 +276,13 @@ Start-PodeServer -Verbose {
             $stackName = $currentStack.Name
 
             # Update the stack with the backup content
-            # Using the update endpoint
+            # Using the correct Portainer endpoint
             $updatePayload = @{
                 StackFileContent = $stackContent
             }
 
             $updateResponse = Invoke-RestMethod -SkipCertificateCheck `
-                -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stackId + "/update?endpointId=" + $endpointId) `
+                -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stackId + "?endpointId=" + $endpointId) `
                 -Headers $Headers `
                 -Method Put `
                 -Body ($updatePayload | ConvertTo-Json -Depth 10) `
