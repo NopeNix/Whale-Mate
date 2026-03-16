@@ -222,4 +222,58 @@ Start-PodeServer -Verbose {
             } -StatusCode 500
         }
     }
+
+    # Get latest activity across all stacks
+    Add-PodeRoute -Method Get -Path "/api/portainer/latest-activity" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+
+        try {
+            $versionsDir = "/data/versions"
+            
+            if (-not (Test-Path $versionsDir)) {
+                Write-PodeJsonResponse -Value @{
+                    success = $true
+                    data    = @()
+                }
+                return
+            }
+
+            $latestActivity = @()
+            $stackDirs = Get-ChildItem -Path $versionsDir -Directory -ErrorAction SilentlyContinue
+            
+            foreach ($stackDir in $stackDirs) {
+                $latestFile = Get-ChildItem -Path $stackDir.FullName -Filter "*.yml" -ErrorAction SilentlyContinue | 
+                              Sort-Object LastWriteTime -Descending | 
+                              Select-Object -First 1
+                
+                if ($latestFile) {
+                    # Get stack name from filename (remove timestamp part)
+                    $fileName = $latestFile.Name
+                    $stackName = $fileName -replace '_\d{4}-\d{2}-\d{2}_\d{2}-\d{2}-\d{2}\.yml$', ''
+                    
+                    $latestActivity += @{
+                        stackId   = $stackDir.Name
+                        stackName = $stackName
+                        timestamp = $latestFile.LastWriteTime.ToString("o")
+                        file      = $latestFile.FullName
+                        size      = $latestFile.Length
+                    }
+                }
+            }
+
+            # Sort by timestamp descending
+            $latestActivity = $latestActivity | Sort-Object { $_.timestamp } -Descending
+
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = $latestActivity
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
 }
