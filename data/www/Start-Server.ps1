@@ -221,6 +221,83 @@ Start-PodeServer -Verbose {
             Write-PodeJsonResponse -Value @{
                 success = $false
                 error   = $_.Exception.Message
+            }             -StatusCode 500
+        }
+    }
+
+    # Restore a stack from backup
+    Add-PodeRoute -Method Post -Path "/api/portainer/restore-stack" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+
+        $stackId = $WebEvent.Data.StackID
+        $filePath = $WebEvent.Data.FilePath
+
+        if (-not $stackId) {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = "StackID is required"
+            } -StatusCode 400
+            return
+        }
+
+        if (-not $filePath) {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = "FilePath is required"
+            } -StatusCode 400
+            return
+        }
+
+        try {
+            # Security: validate the file path is within versions directory
+            $versionsDir = "/data/versions"
+            $safePath = (Resolve-Path -Path $filePath -ErrorAction Stop).Path
+
+            if (-not $safePath.StartsWith($versionsDir)) {
+                throw "Invalid file path"
+            }
+
+            # Read the backup file content
+            $stackContent = Get-Content -Path $safePath -Raw -ErrorAction Stop
+
+            # Get current stack info from Portainer
+            $Headers = @{
+                "X-API-KEY" = $env:PortainerAPIToken
+            }
+
+            $currentStack = Invoke-RestMethod -SkipCertificateCheck `
+                -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stackId) `
+                -Headers $Headers `
+                -Method Get `
+                -ErrorAction Stop
+
+            # Determine the endpoint based on stack type
+            $endpointId = $currentStack.EndpointId
+            $stackName = $currentStack.Name
+
+            # Update the stack with the backup content
+            # Using the update endpoint
+            $updatePayload = @{
+                StackFileContent = $stackContent
+            }
+
+            $updateResponse = Invoke-RestMethod -SkipCertificateCheck `
+                -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stackId + "/update?endpointId=" + $endpointId) `
+                -Headers $Headers `
+                -Method Put `
+                -Body ($updatePayload | ConvertTo-Json -Depth 10) `
+                -ContentType "application/json" `
+                -ErrorAction Stop
+
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = @{ message = "Stack '$stackName' restored successfully from backup" }
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
             } -StatusCode 500
         }
     }
