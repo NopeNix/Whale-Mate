@@ -1,5 +1,6 @@
 [![GitHub Repo stars](https://img.shields.io/github/stars/nopenix/whale-mate)](https://github.com/NopeNix/Whale-Mate)
-[![Build and Push to Docker Hub](https://github.com/NopeNix/whale-mate/actions/workflows/Build%20and%20Push%20to%20Docker%20Hub.yml/badge.svg)](https://github.com/NopeNix/whale-mate/actions/workflows/Build%20and%20Push%20to%20Docker%20Hub.yml)
+[![Build and Push to Docker Hub](https://github.com/NopeNix/whale-mate/actions/workflows/Build%20and%20Push%20to%20Docker%20Hub.yml/badge.svg?branch=main)](https://github.com/NopeNix/whale-mate/actions/workflows/Build%20and%20Push%20to%20Docker%20Hub.yml)
+[![Dev Build](https://github.com/NopeNix/whale-mate/actions/workflows/Build%20and%20Push%20to%20Docker%20Hub.yml/badge.svg?branch=dev)](https://github.com/NopeNix/whale-mate/actions/workflows/Build%20and%20Push%20to%20Docker%20Hub.yml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/nopenix/whale-mate)](https://hub.docker.com/r/nopenix/whale-mate)
 
 
