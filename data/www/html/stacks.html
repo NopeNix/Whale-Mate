@@ -79,7 +79,7 @@
                             <th>Stack</th>
                             <th>Update Status</th>
                             <th>Update Policy</th>
-                            <th>Last Backup</th>
+                            <th title="Compose file backup, not volume data">Last Compose Backup</th>
                             <th>Last Updated</th>
                             <th>Created</th>
                             <th>Stack Status</th>
@@ -106,7 +106,7 @@
                             <th>Stack</th>
                             <th>Update Status</th>
                             <th>Update Policy</th>
-                            <th>Last Backup</th>
+                            <th title="Compose file backup, not volume data">Last Compose Backup</th>
                             <th>Config Files</th>
                             <th>Stack Status</th>
                             <th>Actions</th>
@@ -390,10 +390,10 @@
       <td>${getStatusBadge(stack.Status)}</td>
       <td>
           <div class="btn-group btn-group-sm" role="group">
-              <button class="btn btn-outline-primary" title="View Version History" onclick="viewVersionHistory('${stack.Id}', '${stack.Name}')">
+              <button class="btn btn-outline-primary" title="View compose file history" onclick="viewVersionHistory('${stack.Id}', '${stack.Name}')">
                   <i class="fas fa-history"></i>
               </button>
-              <button class="btn btn-outline-success" title="Backup Now" onclick="backupStackNow('${stack.Id}', '${stack.Name}')">
+              <button class="btn btn-outline-success" title="Backup compose file (not volumes)" onclick="backupStackNow('${stack.Id}', '${stack.Name}')">
                   <i class="fas fa-save"></i>
               </button>
           </div>

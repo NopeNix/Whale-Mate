@@ -125,7 +125,8 @@
 
     <!-- Page Content -->
     <div class="container py-4">
-        <h2 class="mb-4 text-center"><i class="fas fa-code-branch me-2 text-primary"></i> Stack Version History</h2>
+        <h2 class="mb-4 text-center"><i class="fas fa-file-code me-2 text-primary"></i> Compose File Backup & Version History</h2>
+        <p class="text-center text-muted mb-4"><i class="fas fa-info-circle me-1"></i>Backs up and restores the <strong>compose file configuration</strong> (not volumes)</p>
         
         <!-- Stack Selector -->
         <div class="row mb-4">
@@ -141,7 +142,7 @@
         <div class="row mb-4">
             <div class="col-md-6 mx-auto">
                 <button class="btn btn-primary w-100" id="backupNowBtn" disabled>
-                    <i class="fas fa-save me-2"></i>Backup Now
+                    <i class="fas fa-save me-2"></i>Backup Compose File
                 </button>
             </div>
         </div>
@@ -158,8 +159,8 @@
             <div class="col-md-8 mx-auto">
                 <div class="card bg-dark border-secondary">
                     <div class="card-header border-secondary d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Latest Backups</h5>
-                        <small class="text-muted">Most recent backup per stack</small>
+                        <h5 class="mb-0"><i class="fas fa-clock me-2"></i>Latest Compose File Backups</h5>
+                        <small class="text-muted">Most recent compose file backup per stack (not volumes)</small>
                     </div>
                     <div class="card-body p-0">
                         <div id="latestActivityList" class="list-group list-group-flush">
@@ -209,7 +210,7 @@
                 <div class="modal-body">
                     <p>Are you sure you want to restore this stack?</p>
                     <div class="alert alert-warning">
-                        <strong>Warning:</strong> This will overwrite the current stack configuration with the selected backup version.
+                        <strong>Warning:</strong> This will overwrite the current compose file configuration with the selected backup version. <strong>Volume data is not affected.</strong>
                     </div>
                     <table class="table table-dark table-sm mt-3">
                         <tr>
