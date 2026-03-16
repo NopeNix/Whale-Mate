@@ -17,7 +17,7 @@ Start-PodeServer -Verbose {
         $envVersion = $env:BUILD_VERSION
         if ($envVersion) {
             $envVersion = $envVersion.Trim()
-            if ($envVersion -ne "" -and $envVersion -ne "dev-build") {
+            if ($envVersion -ne "" -and $envVersion -ne "dev-build" -and $envVersion -ne "dev-unknown") {
                 $version = $envVersion
             }
         }
@@ -35,6 +35,11 @@ Start-PodeServer -Verbose {
                     }
                 }
             } catch {}
+        }
+        
+        # Third try: generate fallback version if still unknown
+        if ($version -eq "unknown" -or $version -eq "") {
+            $version = "manual-" + (Get-Date).ToString("yyyy-MM-dd-HHmm")
         }
         
         # Build date from environment

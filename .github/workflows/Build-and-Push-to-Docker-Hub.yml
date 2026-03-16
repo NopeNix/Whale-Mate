@@ -81,9 +81,7 @@ jobs:
           tags: |
             nopenix/whale-mate:${{ steps.vars.outputs.floating_tag }}
             nopenix/whale-mate:${{ steps.build_version.outputs.version }}
-          build-args: |
-            BUILD_VERSION=${{ steps.build_version.outputs.version }}
-            BUILD_DATE=${{ steps.build_version.outputs.date }}
+          build-args: "BUILD_VERSION=${{ steps.build_version.outputs.version }} BUILD_DATE=${{ steps.build_version.outputs.date }}"
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

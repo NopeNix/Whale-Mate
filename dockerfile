@@ -1,6 +1,6 @@
 # Build arguments for version info (must be before FROM)
-ARG BUILD_VERSION="dev-build"
-ARG BUILD_DATE="unknown"
+ARG BUILD_VERSION=dev-unknown
+ARG BUILD_DATE=unknown
 
 FROM mcr.microsoft.com/powershell:alpine-3.20
 
@@ -42,10 +42,9 @@ RUN mkdir -p /var/log/supervisor
 # Create dir for DB
 RUN mkdir -p /data/db/
 
-# Create version info file for runtime access (use ENV vars which are available at build time)
+# Create version info file for runtime access
 RUN echo "${BUILD_VERSION}" > /data/version.txt && \
-    echo "${BUILD_DATE}" > /data/build_date.txt && \
-    echo "Created version file with: ${BUILD_VERSION}" >&2
+    echo "${BUILD_DATE}" > /data/build_date.txt
 
 # Set default command to run supervisord
 CMD ["supervisord", "-n", "-c", "/data/supervisord.conf"]
