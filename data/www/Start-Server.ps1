@@ -445,4 +445,63 @@ Start-PodeServer -Verbose {
             } -StatusCode 500
         }
     }
+
+    # Delete a single version
+    Add-PodeRoute -Method Post -Path "/api/portainer/delete-version" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+
+        $stackId = $WebEvent.Data.StackID
+        $filePath = $WebEvent.Data.FilePath
+
+        if (-not $stackId) {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = "StackID is required"
+            } -StatusCode 400
+            return
+        }
+
+        if (-not $filePath) {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = "FilePath is required"
+            } -StatusCode 400
+            return
+        }
+
+        try {
+            # Security: validate the file path is within versions directory
+            $versionsDir = "/data/versions"
+            
+            # Check if file exists
+            if (-not (Test-Path $filePath)) {
+                Write-PodeJsonResponse -Value @{
+                    success = $false
+                    error   = "File not found"
+                } -StatusCode 404
+                return
+            }
+
+            # Get the full path and verify it's in versions directory
+            $safePath = (Resolve-Path -Path $filePath -ErrorAction Stop).Path
+
+            if (-not $safePath.StartsWith($versionsDir)) {
+                throw "Invalid file path"
+            }
+
+            # Delete the file
+            Remove-Item -Path $safePath -Force -ErrorAction Stop
+
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = @{ message = "Version deleted successfully" }
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
 }

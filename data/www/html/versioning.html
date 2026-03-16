@@ -360,6 +360,10 @@
                                                     onclick="showRestoreConfirmation('${selectedStackId}', '${selectedStackName}', '${version.file}', '${version.timestamp}')">
                                                 <i class="fas fa-undo me-1"></i>Restore
                                             </button>
+                                            <button class="btn btn-sm btn-outline-danger" 
+                                                    onclick="deleteVersion('${selectedStackId}', '${version.file}', '${version.timestamp}')">
+                                                <i class="fas fa-trash me-1"></i>Delete
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
@@ -536,6 +540,42 @@
             } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-trash-alt me-2"></i>Clear All Versions';
+            }
+        }
+
+        // Delete a single version
+        async function deleteVersion(stackId, filePath, timestamp) {
+            const fileName = filePath.split('/').pop();
+            const date = new Date(timestamp);
+            const formattedDate = date.toLocaleString();
+            
+            if (!confirm(`Are you sure you want to delete this version?\n\nFile: ${fileName}\nDate: ${formattedDate}\n\nThis action cannot be undone!`)) {
+                return;
+            }
+
+            try {
+                const response = await fetch('/api/portainer/delete-version', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        StackID: parseInt(stackId),
+                        FilePath: filePath
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (!data.success) {
+                    throw new Error(data.error || 'Failed to delete version');
+                }
+
+                // Reload versions
+                await loadVersionHistory(stackId);
+                
+                alert('Version deleted successfully!');
+            } catch (error) {
+                console.error('Delete version error:', error);
+                alert('Failed to delete version: ' + error.message);
             }
         }
 
