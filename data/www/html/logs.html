@@ -346,10 +346,10 @@
                 if (!version || version === 'unknown' || version === '') {
                     version = 'dev';
                 }
-                document.getElementById('footerVersion').textContent = 'v' + version;
+                document.getElementById('footerVersion').textContent = version;
             })
             .catch(() => {
-                document.getElementById('footerVersion').textContent = 'vdev';
+                document.getElementById('footerVersion').textContent = 'dev';
             });
     </script>
 </body>

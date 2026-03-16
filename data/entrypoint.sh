@@ -18,8 +18,7 @@ fi
 
 # Generate a fallback version if still unknown
 if [ "$VERSION" = "unknown" ] || [ -z "$VERSION" ]; then
-    VERSION="manual-$(date +%Y-%m-%d-%H%M)"
-    echo "$VERSION" > /data/version.txt
+    VERSION="dev"
 fi
 
 echo "=========================================="

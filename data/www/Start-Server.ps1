@@ -39,7 +39,7 @@ Start-PodeServer -Verbose {
         
         # Third try: generate fallback version if still unknown
         if ($version -eq "unknown" -or $version -eq "") {
-            $version = "manual-" + (Get-Date).ToString("yyyy-MM-dd-HHmm")
+            $version = "dev"
         }
         
         # Build date from environment
