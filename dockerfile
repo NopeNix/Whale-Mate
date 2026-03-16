@@ -11,22 +11,25 @@ RUN mkdir -p /data
 # Get version from git during build - this is the most reliable method!
 RUN apk add --no-cache git >/dev/null 2>&1 || true
 
-# Try to get git info, fallback to args
+# Try to get git info - check multiple possible locations
 RUN VERSION_FROM_GIT="unknown" && \
-    if [ -d /github/workspace/.git ]; then \
-        cd /github/workspace; \
-        GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown"); \
-        if [ "$GIT_BRANCH" = "main" ]; then PREFIX="MAIN"; \
-        elif [ "$GIT_BRANCH" = "dev" ]; then PREFIX="DEV"; \
-        else PREFIX="PR"; fi; \
-        DATE=$(date +%Y-%m-%d); \
-        TIME=$(date +%H%M); \
-        COMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo "1"); \
-        VERSION_FROM_GIT="${PREFIX}-${DATE}-${TIME}-${COMMIT_COUNT}"; \
-    fi; \
+    for GIT_DIR in "/github/workspace/.git" "/workspace/.git" ".git"; do \
+        if [ -d "$GIT_DIR" ]; then \
+            cd "$(dirname $GIT_DIR)"; \
+            GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown"); \
+            if [ "$GIT_BRANCH" = "main" ]; then PREFIX="MAIN"; \
+            elif [ "$GIT_BRANCH" = "dev" ]; then PREFIX="DEV"; \
+            else PREFIX="PR"; fi; \
+            DATE=$(date +%Y-%m-%d); \
+            TIME=$(date +%H%M); \
+            COMMIT_COUNT=$(git rev-list --count HEAD 2>/dev/null || echo "1"); \
+            VERSION_FROM_GIT="${PREFIX}-${DATE}-${TIME}-${COMMIT_COUNT}"; \
+            break; \
+        fi; \
+    done; \
+    echo "Version source: $VERSION_FROM_GIT"; \
     echo "$VERSION_FROM_GIT" > /data/version.txt; \
-    echo "$BUILD_DATE" > /data/build_date.txt; \
-    echo "Generated version: $VERSION_FROM_GIT"
+    echo "$BUILD_DATE" > /data/build_date.txt
 
 # Set environment variables
 ENV BUILD_VERSION=dev
