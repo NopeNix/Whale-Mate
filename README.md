@@ -4,44 +4,71 @@
 [![Docker Pulls](https://img.shields.io/docker/pulls/nopenix/whale-mate)](https://hub.docker.com/r/nopenix/whale-mate)
 
 
-# Whale Mate - Automated Portainer & Docker Compose Stack Updater
+# Whale Mate - Automated Docker Stack Manager & Backup Solution
+
+**Whale Mate** is a comprehensive management tool for your Docker stacks. Originally started as a simple container updater, it has evolved into a full-featured solution for backing up, restoring, and managing your Portainer stacks and Docker Compose files.
+
 **MINIMUM REQUIREMENTS:**
-- Portainer minimum Version 2.30.0
-- Portainer must be Business Edition [get a free max 3 node license for non commercial here](https://www.portainer.io/take-3)
+- Portainer minimum Version 2.30.0 (optional - only needed for Portainer integration)
+- Portainer Business Edition [get a free max 3 node license for non commercial here](https://www.portainer.io/take-3)
 
 ## Screenshot
 ![Screenshot Stacks](./img/Screenshot-Stacks.png)
 
 ## Introduction
 
-Whale Mate is an automated solution for managing and updating your Portainer stacks and Docker Compose files. It provides:
+Whale Mate is a comprehensive Docker stack management solution that goes far beyond simple container updates. It provides:
 
-- Automatic updates for your containers based on different policies
-- Visual dashboard showing current stack status
-- NTFY notification integration
-- Scheduled updates via CRON
-- Full update logs
+- **Automatic Container Updates**: Keep your containers up-to-date based on flexible policies
+- **Version History & Backups**: Automatic and manual backups of your compose files with full version control
+- **Restore Capability**: Revert to any previous backup version with one click
+- **Visual Web Dashboard**: Beautiful dark-mode UI to monitor and manage all your stacks
+- **NTFY Notifications**: Get push notifications about updates, backups, and restores
+- **Scheduled & Manual Updates**: CRON-based automatic updates or trigger updates on-demand
+- **Full Activity Logs**: Complete audit trail of all actions performed
 
 ## Features
 
-- **Portainer Stack Management**: Check and update all your Portainer stacks
-- **Docker Compose Support**: Also manages standalone docker-compose.yml files
+### Stack Management
+- **Portainer Integration**: Full management of your Portainer stacks (Standalone & Swarm)
+- **Docker Compose Support**: Manage standalone docker-compose.yml files
+- **Visual Dashboard**: Beautiful dark-mode UI with table and card views
+- **Real-time Status**: See update status, backup status, and stack health at a glance
+
+### Backup & Versioning
+- **Automatic Backups**: Stacks are automatically backed up when changes are detected
+- **Manual Backups**: Trigger backups on-demand from the web UI
+- **Version History**: Full timeline of all backups with timestamps
+- **Restore Functionality**: Revert any stack to a previous backup version
+- **Delete Versions**: Clean up old versions individually or in bulk
+
+### Update Automation
 - **Flexible Update Policies**:
-  - `AutoUpdate`: Automatically update the stack
+  - `AutoUpdate`: Automatically update the stack when images change
   - `NTFYOnly`: Only send notification about available updates
-  - `DoNotUpdate`: Never update this stack
-- **Web Dashboard**: Beautiful dark-mode UI to monitor all stacks
-- **CRON Scheduling**: Runs updates on your schedule
-- **NTFY Integration**: Get notified about updates
-- **Version History**: Automatic backup of stack configurations with version control
+  - `DoNotUpdate`: Never update this stack (monitor only)
+- **CRON Scheduling**: Runs updates on your configurable schedule
+- **Manual Trigger**: One-click manual update button for instant updates
+- **Per-Stack Control**: Override default policy for individual stacks
+
+### Notifications & Logging
+- **NTFY Integration**: Push notifications for updates, backups, and restores
+- **Full Activity Logs**: Complete audit trail with search and filtering
+- **Stack-specific Logs**: Filter logs by specific stack name
+- **Export Logs**: Download logs as text files for analysis
 
 ## Prerequisites
 
 Before using Whale Mate, you'll need:
 
 1. Docker and Docker Compose installed
-2. A running Portainer instance **minimum Version 2.30.0** (for Portainer stack management, optional)
-3. (Optional) An NTFY server if you want notifications
+2. (Optional) A running Portainer instance **minimum Version 2.30.0** - only needed for Portainer integration
+3. (Optional) An NTFY server if you want push notifications
+
+**Note:** Whale Mate can run in multiple modes:
+- **Full Mode**: Portainer integration + Docker Compose + Auto-update + Backup + Versioning
+- **Docker Compose Only**: Just monitor and update docker-compose stacks (requires docker.sock mount)
+- **Dashboard Only**: View logs and manage backups without auto-updates
 
 ## Installation
 
@@ -85,6 +112,19 @@ volumes:
 docker-compose up -d
 ```
 
+## Architecture
+
+Whale Mate runs three background services via Supervisord:
+
+1. **Updater Service**: Runs the update check script on your CRON schedule
+2. **Web Dashboard Service**: Serves the web UI and API on port 8080
+3. **Auto-Backup Service**: Continuously monitors for stack changes and creates automatic backups
+
+This ensures that:
+- Updates happen on schedule without manual intervention
+- The web interface is always available
+- Backups are created automatically when stack configurations change
+
 ## Configuration Options
 
 ### Environment Variables
@@ -115,23 +155,44 @@ You can control updating behavior for individual stacks by adding comments to yo
 2. The dashboard shows:
    - All Portainer stacks with their update status
    - All Docker Compose stacks
-3. View update logs by clicking the "Logs" link in the navigation
+3. Navigate between views:
+   - **Stacks**: Monitor status, trigger updates, view backup status
+   - **Update Logs**: Search and filter activity logs
+   - **Versioning**: View backup history, restore previous versions, create manual backups
+
+### Quick Actions (Portainer Stacks)
+From the Stacks page you can:
+- 👁 **View Versions**: See complete backup history
+- 📜 **View Logs**: Filter logs for specific stack
+- 💾 **Backup**: Manually backup compose file
+- 📤 **Update**: Trigger instant update (pull latest images)
+- 🗑 **Clear**: Delete all version history
 
 ## Update Policies
 
 Whale Mate supports three update policies:
 
-1. **AutoUpdate**: Automatically pull latest images and update the stack
-2. **NTFYOnly**: Check for updates but only send notification (don't update)
-3. **DoNotUpdate**: Skip this stack completely
+1. **AutoUpdate**: Automatically pull latest images and update the stack when CRON triggers
+2. **NTFYOnly**: Check for updates but only send notification (don't auto-update)
+3. **DoNotUpdate**: Skip this stack completely (monitor only)
 
 The default policy can be set via `AutoUpdateDefaultMode` environment variable, and can be overridden per-stack with the `#UpdatePolicy` comment.
+
+### Manual Updates
+
+In addition to scheduled automatic updates, you can trigger instant updates manually:
+- Click the **cloud-upload icon** (📤) in the Actions column on any Portainer stack
+- Confirmation dialog shows before triggering
+- Status refreshes automatically after the update completes
 
 ## Notifications
 
 When configured with NTFY, you'll receive notifications about:
-- Available updates
-- Successful updates
+- Available updates for outdated stacks
+- Successful automatic updates
+- Successful manual updates
+- Automatic backups created
+- Restore operations completed
 
 ## Version History
 
@@ -212,12 +273,21 @@ To secure your deployment:
    - Verify `PortainerBaseAddress` is correct
    - Check API token has proper permissions
    - Ensure Portainer is accessible from the Whale Mate container
+   - Portainer API requires Business Edition for stacks endpoint
 
 2. **Stacks not appearing**:
    - For Portainer stacks, ensure they're not Swarm stacks (only Standalone stacks supported)
-   - For Docker Compose, ensure files have proper permissions
+   - For Docker Compose, ensure files have proper permissions and docker.sock is mounted
 
-3. **Check logs**:
+3. **Backups not being created**:
+   - Verify Portainer credentials are configured
+   - Check that the `/data/versions` directory is writable
+
+4. **Manual update fails**:
+   - Ensure stack is Active (not Inactive)
+   - Check Portainer has available resources to perform the update
+
+5. **Check logs**:
 ```bash
 docker-compose logs -f
 ```
@@ -227,11 +297,23 @@ docker-compose logs -f
 **Q: How often does it check for updates?**  
 A: By default every 5 minutes (configurable via CRON_SCHEDULE)
 
-**Q: Can I exclude specific stacks?**  
+**Q: Can I exclude specific stacks from updates?**  
 A: Yes, add `#UpdatePolicy=DoNotUpdate` to your stack file
 
 **Q: Does it work with Swarm mode?**  
-A: Currently only supports standalone Docker stacks (non-Swarm) Portainer is supported in Swarm mode
+A: Portainer stacks are supported in Swarm mode. Docker Compose support is for standalone stacks.
+
+**Q: What gets backed up?**  
+A: Only the compose file configuration is backed up (the YAML file). Volume data is not included.
+
+**Q: Can I trigger updates manually without waiting for CRON?**  
+A: Yes! Click the cloud-upload icon (📤) on any Portainer stack to trigger an instant update.
+
+**Q: Does Whale Mate work without Portainer?**  
+A: Yes, you can use it for Docker Compose stacks only, or even just as a log viewer and dashboard.
+
+**Q: How do I restore a stack to a previous version?**  
+A: Go to Versioning > Select your stack > Click Restore on any backup version > Confirm.
 
 ## Contributing
 
