@@ -302,6 +302,48 @@ Start-PodeServer -Verbose {
         }
     }
 
+    # Get backup status for all stacks (last backup time and count)
+    Add-PodeRoute -Method Get -Path "/api/portainer/backup-status" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+
+        try {
+            $versionsDir = "/data/versions"
+            $result = @{}
+            
+            if (Test-Path $versionsDir) {
+                $stackDirs = Get-ChildItem -Path $versionsDir -Directory -ErrorAction SilentlyContinue
+                
+                foreach ($stackDir in $stackDirs) {
+                    $files = Get-ChildItem -Path $stackDir.FullName -Filter "*.yml" -ErrorAction SilentlyContinue
+                    
+                    if ($files) {
+                        $latestFile = $files | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+                        $result[$stackDir.Name] = @{
+                            lastBackup = $latestFile.LastWriteTime.ToString("o")
+                            backupCount = $files.Count
+                        }
+                    } else {
+                        $result[$stackDir.Name] = @{
+                            lastBackup = $null
+                            backupCount = 0
+                        }
+                    }
+                }
+            }
+            
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = $result
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
+
     # Get latest activity across all stacks
     Add-PodeRoute -Method Get -Path "/api/portainer/latest-activity" -ScriptBlock {
         . ($PSScriptRoot + "/../functions.ps1")

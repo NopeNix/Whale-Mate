@@ -557,8 +557,20 @@
             // Set up restore confirmation button
             document.getElementById('confirmRestoreBtn').addEventListener('click', restoreStack);
             
+            // Check for stack query parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const preselectedStack = urlParams.get('stack');
+            
             // Load stacks on page load
-            loadStacks();
+            loadStacks().then(() => {
+                // If stack parameter provided, select it
+                if (preselectedStack) {
+                    const select = document.getElementById('stackSelect');
+                    select.value = preselectedStack;
+                    // Trigger change event
+                    select.dispatchEvent(new Event('change'));
+                }
+            });
 
             // Show latest activity, hide timeline initially
             document.getElementById('latestActivitySection').style.display = 'block';

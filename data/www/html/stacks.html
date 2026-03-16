@@ -79,9 +79,11 @@
                             <th>Stack</th>
                             <th>Update Status</th>
                             <th>Update Policy</th>
+                            <th>Last Backup</th>
                             <th>Last Updated</th>
                             <th>Created</th>
                             <th>Stack Status</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="portainer-stacks-table">
@@ -104,8 +106,10 @@
                             <th>Stack</th>
                             <th>Update Status</th>
                             <th>Update Policy</th>
+                            <th>Last Backup</th>
                             <th>Config Files</th>
                             <th>Stack Status</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody id="docker-stacks-table">
@@ -273,12 +277,91 @@
         function sleep(ms) {
             return new Promise(resolve => setTimeout(resolve, ms));
         }
+
+        // Fetch backup status for all stacks
+        let backupStatusCache = {};
+        async function fetchBackupStatus() {
+            try {
+                const response = await fetch('/api/portainer/backup-status');
+                const data = await response.json();
+                if (data.success && data.data) {
+                    backupStatusCache = data.data;
+                }
+            } catch (error) {
+                console.error('Error fetching backup status:', error);
+            }
+        }
+
+        // Get backup status badge for a stack
+        function getBackupBadge(stackId) {
+            const status = backupStatusCache[stackId];
+            if (!status || !status.lastBackup) {
+                return '<span class="badge text-bg-danger"><i class="fas fa-times me-1"></i>Never</span>';
+            }
+            
+            const lastBackup = new Date(status.lastBackup);
+            const now = new Date();
+            const hoursDiff = (now - lastBackup) / (1000 * 60 * 60);
+            
+            let badgeClass = 'text-bg-success';
+            let icon = 'check';
+            let label = '';
+            
+            if (hoursDiff > 24) {
+                badgeClass = 'text-bg-warning';
+                icon = 'clock';
+                label = 'Old';
+            } else {
+                badgeClass = 'text-bg-success';
+                icon = 'check';
+                label = 'Recent';
+            }
+            
+            const formattedDate = lastBackup.toLocaleString();
+            return `
+                <span class="badge ${badgeClass}" title="${formattedDate} (${status.backupCount} backups)">
+                    <i class="fas fa-${icon} me-1"></i>${label}
+                </span>`;
+        }
+
+        // Backup a stack now
+        async function backupStackNow(stackId, stackName) {
+            if (!confirm(`Create backup for stack "${stackName}"?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch('/api/portainer/backup-stack', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ StackID: parseInt(stackId) })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Backup created for "${stackName}"`);
+                    // Refresh backup status
+                    await fetchBackupStatus();
+                    loadPortainerStacks();
+                } else {
+                    throw new Error(data.error || 'Backup failed');
+                }
+            } catch (error) {
+                console.error('Backup error:', error);
+                alert('Backup failed: ' + error.message);
+            }
+        }
+
+        // View version history for a stack
+        function viewVersionHistory(stackId, stackName) {
+            window.location.href = `versioning.html?stack=${stackId}`;
+        }
         // Load Portainer stacks data with throttled status requests
         async function loadPortainerStacks() {
             try {
                 // Clear any previous error messages
                 document.getElementById('portainer-stacks-table').innerHTML = `
-            <tr><td colspan="6" class="text-center py-5">Loading stacks data...</td></tr>
+            <tr><td colspan="8" class="text-center py-5">Loading stacks data...</td></tr>
         `;
                 // Get stacks data
                 const response = await fetch('/api/portainer/stacks');
@@ -288,7 +371,7 @@
                 }
                 if (!data.data || data.data.length === 0) {
                     document.getElementById('portainer-stacks-table').innerHTML = `
-                <tr><td colspan="6" class="text-center py-5 text-bg-info">
+                <tr><td colspan="8" class="text-center py-5 text-bg-info">
                 No stacks found
                 </td></tr>`;
                     return;
@@ -296,15 +379,26 @@
                 // Create table with loading placeholders first
                 const tableHTML = data.data.map(stack => `
             <tr class="align-middle">
-                <td><strong>${stack.Name}</strong></td>
-                <td id="status-${stack.Id}" class="status-cell" data-stack-id="${stack.Id}">
-                ${getUpdateBadge()} <!-- Loading badge -->
-                </td>
-                <td>${stack.UpdatePolicy || 'N/A'}</td>
-                <td>${formatDate(stack.UpdateDate)}</td>
-                <td>${formatDate(stack.CreationDate)}</td>
-                <td>${getStatusBadge(stack.Status)}</td>
-            </tr>
+      <td><strong>${stack.Name}</strong></td>
+      <td id="status-${stack.Id}" class="status-cell" data-stack-id="${stack.Id}">
+      ${getUpdateBadge()} <!-- Loading badge -->
+      </td>
+      <td>${stack.UpdatePolicy || 'N/A'}</td>
+      <td id="backup-${stack.Id}">${getBackupBadge(stack.Id)}</td>
+      <td>${formatDate(stack.UpdateDate)}</td>
+      <td>${formatDate(stack.CreationDate)}</td>
+      <td>${getStatusBadge(stack.Status)}</td>
+      <td>
+          <div class="btn-group btn-group-sm" role="group">
+              <button class="btn btn-outline-primary" title="View Version History" onclick="viewVersionHistory('${stack.Id}', '${stack.Name}')">
+                  <i class="fas fa-history"></i>
+              </button>
+              <button class="btn btn-outline-success" title="Backup Now" onclick="backupStackNow('${stack.Id}', '${stack.Name}')">
+                  <i class="fas fa-save"></i>
+              </button>
+          </div>
+      </td>
+  </tr>
         `).join('');
                 document.getElementById('portainer-stacks-table').innerHTML = tableHTML;
                 // Configure throttling (adjust these values!)
@@ -331,7 +425,7 @@
             } catch (error) {
                 console.error('Error fetching Portainer stacks:', error);
                 document.getElementById('portainer-stacks-table').innerHTML = `
-            <tr><td colspan="6" class="text-center py-5 text-bg-danger">
+            <tr><td colspan="8" class="text-center py-5 text-bg-danger">
             Error loading stacks: ${error.message}
             </td></tr>`;
             }
@@ -355,7 +449,7 @@
             try {
                 // Clear any previous error messages
                 document.getElementById('docker-stacks-table').innerHTML = `
-            <tr><td colspan="5" class="text-center py-5">Loading stacks data...</td></tr>
+            <tr><td colspan="7" class="text-center py-5">Loading stacks data...</td></tr>
         `;
                 // Get stacks data from the Docker Compose endpoint
                 const response = await fetch('/api/docker-compose/stacks');
@@ -364,7 +458,7 @@
                 const stacks = Array.isArray(data) ? data : (data.data || []);
                 if (!stacks || stacks.length === 0) {
                     document.getElementById('docker-stacks-table').innerHTML = `
-                <tr><td colspan="5" class="text-center py-5 text-bg-info">
+                <tr><td colspan="7" class="text-center py-5 text-bg-info">
                 No stacks found
                 </td></tr>`;
                     return;
@@ -411,10 +505,18 @@
                                 ${getUpdateBadge(formattedUpdateStatus)} <!-- Display update status with badge -->
                             </td>
                             <td>${stack.UpdatePolicy || 'N/A'}</td>
+                            <td><span class="badge text-bg-secondary"><i class="fas fa-minus me-1"></i>N/A</span></td>
                             <td style="max-width: 300px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${stack.ConfigFiles || 'N/A'}">
                                 ${stack.ConfigFiles || 'N/A'}
                             </td>
                             <td>${getDockerStatusBadge(stack.Status)}</td>
+                            <td>
+                                <div class="btn-group btn-group-sm" role="group">
+                                    <button class="btn btn-outline-primary" title="View Config" onclick="alert('Docker Compose versioning coming soon!')">
+                                        <i class="fas fa-history"></i>
+                                    </button>
+                                </div>
+                            </td>
                         </tr>
                     `;
                 }).join('');
@@ -422,13 +524,15 @@
             } catch (error) {
                 console.error('Error fetching Docker Compose stacks:', error);
                 document.getElementById('docker-stacks-table').innerHTML = `
-            <tr><td colspan="5" class="text-center py-5 text-bg-danger">
+            <tr><td colspan="7" class="text-center py-5 text-bg-danger">
             Error loading stacks: ${error.message}
             </td></tr>`;
-            }
         }
+}
         // Initial load for both tables
-        window.addEventListener('load', () => {
+        window.addEventListener('load', async () => {
+            // Fetch backup status first
+            await fetchBackupStatus();
             loadPortainerStacks();
             loadDockerStacks();
         });
