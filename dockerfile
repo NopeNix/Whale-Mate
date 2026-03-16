@@ -5,6 +5,9 @@ ARG BUILD_DATE=$(date +%Y-%m-%d)
 
 FROM mcr.microsoft.com/powershell:alpine-3.20
 
+# Create data directory first
+RUN mkdir -p /data
+
 # Get version from git during build - this is the most reliable method!
 RUN apk add --no-cache git >/dev/null 2>&1 || true
 
