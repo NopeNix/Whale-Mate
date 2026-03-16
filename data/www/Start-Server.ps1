@@ -147,9 +147,11 @@ Start-PodeServer -Verbose {
 
         try {
             $versions = Get-StackVersionHistory -StackId $stackId
+            # Force to array to ensure proper JSON serialization
+            $versionsArray = @($versions)
             Write-PodeJsonResponse -Value @{
                 success = $true
-                data    = $versions
+                data    = $versionsArray
             }
         }
         catch {

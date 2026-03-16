@@ -231,7 +231,14 @@
                     throw new Error(data.error || 'Failed to load versions');
                 }
 
-                const versions = data.data || [];
+                let versions = data.data;
+                
+                // Ensure versions is always an array
+                if (!versions) {
+                    versions = [];
+                } else if (!Array.isArray(versions)) {
+                    versions = [versions];
+                }
 
                 if (versions.length === 0) {
                     timeline.innerHTML = `

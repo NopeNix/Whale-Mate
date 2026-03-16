@@ -360,16 +360,17 @@ function Get-StackVersionHistory {
     $versionFiles = Get-ChildItem -Path $stackVersionsDir -Filter "*.yml" -ErrorAction SilentlyContinue | 
                     Sort-Object LastWriteTime -Descending
 
-    $versions = @()
+    $versions = [System.Collections.ArrayList]::new()
     foreach ($file in $versionFiles) {
-        $versions += @{
+        [void]$versions.Add(@{
             timestamp = $file.LastWriteTime.ToString("o")
             file      = $file.FullName
             size      = $file.Length
-        }
+        })
     }
 
-    return $versions
+    # Ensure we always return an array (even if empty)
+    return @($versions)
 }
 
 function Backup-PortainerStack {
