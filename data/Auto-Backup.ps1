@@ -184,8 +184,10 @@ while ($true) {
             
             # Check if stack is new or hash changed
             # Convert to string to ensure proper comparison
-            $prevHash = [string]$previousStack.hash
+            $prevHash = if ($previousStack) { [string]$previousStack.hash } else { "<none>" }
             $currHash = [string]$currentStack.hash
+            
+            Write-Host "[Auto-Backup] Stack '$($currentStack.name)': prev=$prevHash curr=$currHash equal=$($prevHash -eq $currHash)"
             
             if (-not $previousStack -or $prevHash -ne $currHash) {
                 Write-Host "[Auto-Backup] Detected change in stack: $($currentStack.name) (ID: $stackId)"
