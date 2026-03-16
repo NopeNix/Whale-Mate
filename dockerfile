@@ -1,12 +1,18 @@
 # Build arguments for version info (must be before FROM)
-ARG BUILD_VERSION=dev-unknown
-ARG BUILD_DATE=unknown
+ARG BUILD_VERSION
+ARG BUILD_DATE
 
 FROM mcr.microsoft.com/powershell:alpine-3.20
 
-# Set build version as environment variable for runtime access
-ENV BUILD_VERSION=${BUILD_VERSION}
-ENV BUILD_DATE=${BUILD_DATE}
+# Debug: Print what args we received
+RUN echo "=== BUILD ARGS DEBUG ===" && \
+    echo "BUILD_VERSION arg: '$BUILD_VERSION'" && \
+    echo "BUILD_DATE arg: '$BUILD_DATE'" && \
+    echo "=======================" 
+
+# Set build version as environment variable for runtime access  
+ENV BUILD_VERSION=${BUILD_VERSION:-dev-unknown}
+ENV BUILD_DATE=${BUILD_DATE:-unknown}
 
 # Install necessary packages
 RUN apk update && \
