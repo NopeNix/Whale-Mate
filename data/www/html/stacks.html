@@ -386,6 +386,41 @@
             }
         }
 
+        // Manually update a stack now
+        async function updateStackNow(stackId, stackName, btn) {
+            if (!confirm(`Trigger manual update for stack "${stackName}"?\n\nThis will pull the latest images and recreate containers.`)) {
+                return;
+            }
+            
+            // Disable button and show loading state
+            const originalBtnContent = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i>';
+            
+            try {
+                const response = await fetch('/api/portainer/update-stack', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ StackID: parseInt(stackId) })
+                });
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`Update triggered for "${stackName}"`);
+                    // Refresh the status after a short delay
+                    setTimeout(() => loadPortainerStacks(), 2000);
+                } else {
+                    throw new Error(data.error || 'Update failed');
+                }
+            } catch (error) {
+                console.error('Update error:', error);
+                alert('Update failed: ' + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalBtnContent;
+            }
+        }
+
         // View version history for a stack
         function viewVersionHistory(stackId, stackName) {
             window.location.href = `versioning.html?stack=${stackId}`;
@@ -495,6 +530,9 @@
                                 <button class="btn btn-outline-success" title="Backup compose file (not volumes)" onclick="backupStackNow('${stack.Id}', '${stack.Name}')">
                                     <i class="fas fa-save"></i>
                                 </button>
+                                <button class="btn btn-outline-warning" title="Manually trigger update now" onclick="updateStackNow('${stack.Id}', '${stack.Name}', this)">
+                                    <i class="fas fa-cloud-upload-alt"></i>
+                                </button>
                                 <button class="btn btn-outline-danger" title="Clear all versions" onclick="clearVersionsFromStacks('${stack.Id}', '${stack.Name}')">
                                     <i class="fas fa-trash-alt"></i>
                                 </button>
@@ -584,6 +622,9 @@
               </button>
               <button class="btn btn-outline-success" title="Backup compose file (not volumes)" onclick="backupStackNow('${stack.Id}', '${stack.Name}')">
                   <i class="fas fa-save"></i>
+              </button>
+              <button class="btn btn-outline-warning" title="Manually trigger update now" onclick="updateStackNow('${stack.Id}', '${stack.Name}', this)">
+                  <i class="fas fa-cloud-upload-alt"></i>
               </button>
           </div>
       </td>

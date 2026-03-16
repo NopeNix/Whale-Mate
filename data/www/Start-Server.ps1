@@ -111,7 +111,76 @@ Start-PodeServer -Verbose {
         }
     }
 
-    # Docker Compose: StackUpdateStatus API
+    # Portainer: Manual Stack Update API
+    Add-PodeRoute -Method Post -Path "/api/portainer/update-stack" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+
+        $stackId = $WebEvent.Data.StackID
+
+        if (-not $stackId) {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = "StackID is required"
+            } -StatusCode 400
+            return
+        }
+
+        try {
+            $Headers = @{
+                "X-API-KEY" = $env:PortainerAPIToken
+            }
+
+            $stack = Invoke-RestMethod -SkipCertificateCheck `
+                -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stackId) `
+                -Headers $Headers `
+                -Method Get `
+                -ErrorAction Stop
+
+            $stackFile = Invoke-RestMethod -SkipCertificateCheck `
+                -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stackId + "/file") `
+                -Headers $Headers `
+                -Method Get `
+                -ErrorAction Stop
+
+            $stackFileContent = $stackFile.StackFileContent
+
+            $Body = @{
+                env              = $stack.Env 
+                prune            = $true
+                pullImage        = $true
+                stackFileContent = $stackFileContent
+            }
+            $BodyJson = $Body | ConvertTo-Json -Depth 10
+
+            $Uri = ($env:PortainerBaseAddress + "/api/stacks/" + $stackId + "?endpointId=" + $stack.EndpointId)
+            
+            Invoke-RestMethod $Uri `
+                -Method Put `
+                -SkipCertificateCheck `
+                -Body $BodyJson `
+                -Headers $Headers `
+                -ContentType "application/json" `
+                -ErrorAction Stop
+
+            if ($env:NTFYEnabled -eq $true) {
+                $Message = "'" + $stack.Name + "' has been manually updated (Portainer - " + ([System.Uri]$env:PortainerBaseAddress) + ")"
+                Send-NTFYMessage -Message $Message
+            }
+
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = @{ message = "Stack '" + $stack.Name + "' updated successfully" }
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
+
+        # Docker Compose: StackUpdateStatus API
     Add-PodeRoute -Method Get -Path "/api/docker-compose/stack-update-status" -ScriptBlock {
         . ($PSScriptRoot + "/../functions.ps1")
         try {
