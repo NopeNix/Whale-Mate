@@ -9,8 +9,7 @@ on:
       - "main"
       - "dev"
   schedule:
-    - cron: "0 0 * * 0" # Every Sunday at midnight
-
+    - cron: "0 0 * * 0"
 
 jobs:
   docker:
@@ -28,7 +27,6 @@ jobs:
       - name: Determine version
         id: version
         run: |
-          # Determine branch prefix
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             PREFIX="MAIN"
             FLOATING_TAG="latest"
@@ -40,21 +38,17 @@ jobs:
             FLOATING_TAG="pr-${{ github.event.pull_request.number }}"
           fi
           
-          # Get current date/time
           DATE=$(date +%Y-%m-%d)
           TIME=$(date +%H%M)
           
-          # Count builds this minute
           RUNS=$(gh run list --branch ${{ github.ref }} --event push --status success --json createdAt -q "[.[] | select(.createdAt | startswith(\"$DATE\"))] | length" 2>/dev/null || echo "0")
           BUILD_NUM=$((RUNS + 1))
           
-          # Full version
           VERSION="${PREFIX}-${DATE}-${TIME}-${BUILD_NUM}"
           
           echo "version=$VERSION" >> $GITHUB_OUTPUT
           echo "date=$DATE" >> $GITHUB_OUTPUT
           echo "floating=$FLOATING_TAG" >> $GITHUB_OUTPUT
-          echo "Generated version: $VERSION"
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -65,14 +59,8 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Debug version outputs
-        run: |
-          echo "Version: ${{ steps.version.outputs.version }}"
-          echo "Date: ${{ steps.version.outputs.date }}"
-          echo "Floating: ${{ steps.version.outputs.floating }}"
-
       - name: Build and push
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v6
         with:
           context: .
           platforms: linux/amd64,linux/arm64
@@ -81,7 +69,8 @@ jobs:
             nopenix/whale-mate:${{ steps.version.outputs.floating }}
             nopenix/whale-mate:${{ steps.version.outputs.version }}
           build-args: |
-            BUILD_VERSION=${{ steps.version.outputs.version }}
-            BUILD_DATE=${{ steps.version.outputs.date }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
+            BUILD_VERSION
+            BUILD_DATE
+        env:
+          BUILD_VERSION: ${{ steps.version.outputs.version }}
+          BUILD_DATE: ${{ steps.version.outputs.date }}
