@@ -1,4 +1,12 @@
+# Build arguments for version info (must be before FROM)
+ARG BUILD_VERSION="dev-build"
+ARG BUILD_DATE="unknown"
+
 FROM mcr.microsoft.com/powershell:alpine-3.20
+
+# Set build version as environment variable for runtime access
+ENV BUILD_VERSION=${BUILD_VERSION}
+ENV BUILD_DATE=${BUILD_DATE}
 
 # Install necessary packages
 RUN apk update && \
@@ -33,6 +41,10 @@ RUN mkdir -p /var/log/supervisor
 
 # Create dir for DB
 RUN mkdir -p /data/db/
+
+# Create version info file for runtime access
+RUN echo "${BUILD_VERSION}" > /data/version.txt && \
+    echo "${BUILD_DATE}" > /data/build_date.txt
 
 # Set default command to run supervisord
 CMD ["supervisord", "-n", "-c", "/data/supervisord.conf"]

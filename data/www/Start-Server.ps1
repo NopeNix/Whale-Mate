@@ -8,6 +8,26 @@ if ($null -ne $env:PortainerBaseAddress -or $env:PortainerBaseAddress -eq "") {
 Start-PodeServer -Verbose {
     Add-PodeEndpoint -Address * -Port 8080 -Protocol Http
     
+    # Version API
+    Add-PodeRoute -Method Get -Path "/api/version" -ScriptBlock {
+        $version = "dev"
+        $buildDate = "unknown"
+        
+        if (Test-Path "/data/version.txt") {
+            $version = Get-Content "/data/version.txt" -Raw
+            $version = $version.Trim()
+        }
+        if (Test-Path "/data/build_date.txt") {
+            $buildDate = Get-Content "/data/build_date.txt" -Raw
+            $buildDate = $buildDate.Trim()
+        }
+        
+        Write-PodeJsonResponse -Value @{
+            version = $version
+            buildDate = $buildDate
+        }
+    }
+    
     # Stacks
     Add-PodeRoute -Method Get -Path "/" -ScriptBlock {
         Write-PodeHtmlResponse (Get-Content ($PSScriptRoot + "/html/stacks.html") -Raw)

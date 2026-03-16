@@ -1,5 +1,17 @@
 #!/bin/sh
 
+# Display build version on startup
+if [ -f /data/version.txt ]; then
+    BUILD_VERSION=$(cat /data/version.txt)
+    echo "=========================================="
+    echo "  Whale Mate - Build: $BUILD_VERSION"
+    echo "=========================================="
+else
+    echo "=========================================="
+    echo "  Whale Mate - Build Version Unknown"
+    echo "=========================================="
+fi
+
 # Set default cron schedule if not provided
 CRON_SCHEDULE="${CRON_SCHEDULE:-*/1 * * * *}"
 
