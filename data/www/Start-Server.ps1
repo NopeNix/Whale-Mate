@@ -397,4 +397,52 @@ Start-PodeServer -Verbose {
             } -StatusCode 500
         }
     }
+
+    # Clear all versions for a stack
+    Add-PodeRoute -Method Post -Path "/api/portainer/clear-versions" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+
+        $stackId = $WebEvent.Data.StackID
+
+        if (-not $stackId) {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = "StackID is required"
+            } -StatusCode 400
+            return
+        }
+
+        try {
+            $versionsDir = "/data/versions"
+            $stackVersionDir = Join-Path -Path $versionsDir -ChildPath $stackId
+
+            if (-not (Test-Path $stackVersionDir)) {
+                Write-PodeJsonResponse -Value @{
+                    success = $true
+                    data    = @{ message = "No versions found for stack $stackId" }
+                }
+                return
+            }
+
+            # Get count of files before deletion
+            $filesToDelete = Get-ChildItem -Path $stackVersionDir -Filter "*.yml" -ErrorAction SilentlyContinue
+            $count = $filesToDelete.Count
+
+            # Delete all version files
+            foreach ($file in $filesToDelete) {
+                Remove-Item -Path $file.FullName -Force -ErrorAction Stop
+            }
+
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = @{ message = "Cleared $count version(s) for stack $stackId" }
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
 }
