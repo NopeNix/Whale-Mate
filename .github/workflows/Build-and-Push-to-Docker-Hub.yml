@@ -65,6 +65,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
+      - name: Debug version outputs
+        run: |
+          echo "Version: ${{ steps.version.outputs.version }}"
+          echo "Date: ${{ steps.version.outputs.date }}"
+          echo "Floating: ${{ steps.version.outputs.floating }}"
+
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
