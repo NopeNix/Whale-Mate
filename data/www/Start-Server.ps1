@@ -177,7 +177,9 @@ Start-PodeServer -Verbose {
         try {
             # Security: only allow files in the versions directory
             $versionsDir = "/data/versions"
-            $safePath = (Resolve-Path -Path (Join-Path $versionsDir (Split-Path $file -Leaf)) -ErrorAction Stop).Path
+            
+            # Resolve the full path as-is to preserve stack ID directory
+            $safePath = (Resolve-Path -Path $file -ErrorAction Stop).Path
 
             if (-not $safePath.StartsWith($versionsDir)) {
                 throw "Invalid file path"
