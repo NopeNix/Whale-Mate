@@ -4,27 +4,46 @@
 $versionsDir = "/data/versions"
 $hashDbFile = "/data/db/stack-hashes.json"
 
-# Load existing hashes if available
+# Load existing hashes as hashtable
 function Get-StackHashes {
+    $result = @{}
     if (Test-Path $hashDbFile) {
         try {
             $content = Get-Content -Path $hashDbFile -Raw -ErrorAction SilentlyContinue
             if ($content) {
-                return ($content | ConvertFrom-Json)
+                $data = ($content | ConvertFrom-Json)
+                # Convert PSCustomObject to hashtable for proper comparison
+                $data.PSObject.Properties | ForEach-Object {
+                    $result[$_.Name] = @{
+                        name = $_.Value.name
+                        hash = [string]$_.Value.hash
+                        type = $_.Value.type
+                    }
+                }
             }
         }
         catch {
-            Write-Host "[Auto-Backup] Warning: Could not load hash database"
+            Write-Host "[Auto-Backup] Warning: Could not load hash database: $_"
         }
     }
-    return @{}
+    return $result
 }
 
 # Save hashes
 function Save-StackHashes {
     param([hashtable]$Hashes)
     
-    $json = $Hashes | ConvertTo-Json -Depth 10
+    # Ensure all values are strings for proper JSON serialization
+    $cleanHashes = @{}
+    foreach ($key in $Hashes.Keys) {
+        $cleanHashes[$key] = @{
+            name = [string]$Hashes[$key].name
+            hash = [string]$Hashes[$key].hash
+            type = [string]$Hashes[$key].type
+        }
+    }
+    
+    $json = $cleanHashes | ConvertTo-Json -Depth 10
     $json | Out-File -FilePath $hashDbFile -Encoding UTF8 -Force
 }
 
@@ -151,8 +170,12 @@ while ($true) {
             $previousStack = $previousHashes[$stackId]
             
             # Check if stack is new or hash changed
-            if (-not $previousStack -or $previousStack.hash -ne $currentStack.hash) {
-                Write-Host "[Auto-Backup] Detected change in stack: $($currentStack.name) (ID: $stackId)"
+            # Convert to string to ensure proper comparison
+            $prevHash = [string]$previousStack.hash
+            $currHash = [string]$currentStack.hash
+            
+            if (-not $previousStack -or $prevHash -ne $currHash) {
+                Write-Host "[Auto-Backup] Detected change in stack: $($currentStack.name) (ID: $stackId) - Previous: $prevHash, Current: $currHash"
                 
                 # Create backup - wrap in try/catch to not stop for one failed backup
                 try {
