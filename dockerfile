@@ -42,9 +42,10 @@ RUN mkdir -p /var/log/supervisor
 # Create dir for DB
 RUN mkdir -p /data/db/
 
-# Create version info file for runtime access
+# Create version info file for runtime access (use ENV vars which are available at build time)
 RUN echo "${BUILD_VERSION}" > /data/version.txt && \
-    echo "${BUILD_DATE}" > /data/build_date.txt
+    echo "${BUILD_DATE}" > /data/build_date.txt && \
+    echo "Created version file with: ${BUILD_VERSION}" >&2
 
 # Set default command to run supervisord
 CMD ["supervisord", "-n", "-c", "/data/supervisord.conf"]

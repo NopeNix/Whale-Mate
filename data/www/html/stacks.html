@@ -792,7 +792,11 @@
         fetch('/api/version')
             .then(response => response.json())
             .then(data => {
-                document.getElementById('footerVersion').textContent = 'v' + data.version;
+                let version = data.version;
+                if (!version || version === 'unknown' || version === '') {
+                    version = 'dev';
+                }
+                document.getElementById('footerVersion').textContent = 'v' + version;
             })
             .catch(() => {
                 document.getElementById('footerVersion').textContent = 'vdev';

@@ -10,16 +10,40 @@ Start-PodeServer -Verbose {
     
     # Version API
     Add-PodeRoute -Method Get -Path "/api/version" -ScriptBlock {
-        $version = "dev"
-        $buildDate = "unknown"
+        $version = "unknown"
+        $buildDate = (Get-Date).ToString("yyyy-MM-dd")
         
-        if (Test-Path "/data/version.txt") {
-            $version = Get-Content "/data/version.txt" -Raw
-            $version = $version.Trim()
+        # First try: check environment variable (set at build time)
+        $envVersion = $env:BUILD_VERSION
+        if ($envVersion) {
+            $envVersion = $envVersion.Trim()
+            if ($envVersion -ne "" -and $envVersion -ne "dev-build") {
+                $version = $envVersion
+            }
         }
-        if (Test-Path "/data/build_date.txt") {
-            $buildDate = Get-Content "/data/build_date.txt" -Raw
-            $buildDate = $buildDate.Trim()
+        
+        # Second try: check version file
+        if ($version -eq "unknown") {
+            try {
+                if (Test-Path "/data/version.txt") {
+                    $fileContent = Get-Content "/data/version.txt" -ErrorAction Stop
+                    if ($fileContent) {
+                        $fileContent = $fileContent.Trim()
+                        if ($fileContent -ne "") {
+                            $version = $fileContent
+                        }
+                    }
+                }
+            } catch {}
+        }
+        
+        # Build date from environment
+        $envDate = $env:BUILD_DATE
+        if ($envDate) {
+            $envDate = $envDate.Trim()
+            if ($envDate -ne "" -and $envDate -ne "unknown") {
+                $buildDate = $envDate
+            }
         }
         
         Write-PodeJsonResponse -Value @{
