@@ -97,18 +97,6 @@
     <!-- Filter controls -->
     <div class="row g-3 mb-3 align-items-center">
       <div class="col-auto">
-        <label for="logLevelFilter" class="col-form-label">Level:</label>
-      </div>
-      <div class="col-auto">
-        <select class="form-select form-select-sm bg-dark text-light" id="logLevelFilter" style="width: auto;">
-          <option value="">All</option>
-          <option value="ERROR">ERROR</option>
-          <option value="WARNING">WARNING</option>
-          <option value="INFO">INFO</option>
-          <option value="SUCCESS">SUCCESS</option>
-        </select>
-      </div>
-      <div class="col-auto">
         <div class="input-group input-group-sm">
           <span class="input-group-text bg-dark text-light border-secondary">
             <i class="fas fa-search"></i>
@@ -119,7 +107,7 @@
       <div class="col-auto ms-auto">
         <div class="form-check form-switch">
           <input class="form-check-input" type="checkbox" id="autoRefreshToggle">
-          <label class="form-check-label" for="autoRefreshToggle">Auto-refresh (30s)</label>
+          <label class="form-check-label" for="autoRefreshToggle">Auto-refresh (5s)</label>
         </div>
       </div>
     </div>
@@ -166,7 +154,6 @@
     // Filter and display logs
     function displayLogs() {
       const logElement = document.getElementById('update-log');
-      const levelFilter = document.getElementById('logLevelFilter').value;
       const searchText = document.getElementById('logSearchInput').value.toLowerCase();
       
       if (!rawLogData || rawLogData.length === 0) {
@@ -179,13 +166,6 @@
       }
       
       let filteredLogs = rawLogData;
-      
-      // Filter by level
-      if (levelFilter) {
-        filteredLogs = filteredLogs.filter(line => 
-          line.toUpperCase().includes(`[${levelFilter}]`)
-        );
-      }
       
       // Filter by search text
       if (searchText) {
@@ -202,6 +182,9 @@
         </div>`;
         return;
       }
+      
+      // Reverse to show newest on top
+      filteredLogs = filteredLogs.reverse();
       
       // Join and colorize
       const colorized = colorizeLog(filteredLogs.join('\n'));
@@ -238,14 +221,13 @@
     document.addEventListener('DOMContentLoaded', () => {
       loadLogs();
       
-      // Set up filter listeners
-      document.getElementById('logLevelFilter').addEventListener('change', displayLogs);
+      // Set up search listener
       document.getElementById('logSearchInput').addEventListener('input', displayLogs);
       
       // Auto-refresh toggle
       document.getElementById('autoRefreshToggle').addEventListener('change', (e) => {
         if (e.target.checked) {
-          autoRefreshInterval = setInterval(loadLogs, 30000);
+          autoRefreshInterval = setInterval(loadLogs, 5000);
         } else {
           clearInterval(autoRefreshInterval);
         }
