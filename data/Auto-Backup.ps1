@@ -175,7 +175,7 @@ while ($true) {
             $currHash = [string]$currentStack.hash
             
             if (-not $previousStack -or $prevHash -ne $currHash) {
-                Write-Host "[Auto-Backup] Detected change in stack: $($currentStack.name) (ID: $stackId) - Previous: $prevHash, Current: $currHash"
+                Write-Host "[Auto-Backup] Detected change in stack: $($currentStack.name) (ID: $stackId)"
                 
                 # Create backup - wrap in try/catch to not stop for one failed backup
                 try {
