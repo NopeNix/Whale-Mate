@@ -14,6 +14,9 @@ on:
 jobs:
   docker:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      floating: ${{ steps.version.outputs.floating }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -29,13 +32,13 @@ jobs:
         run: |
           if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
             PREFIX="MAIN"
-            FLOATING_TAG="latest"
+            FLOATING="latest"
           elif [[ "${{ github.ref }}" == "refs/heads/dev" ]]; then
             PREFIX="DEV"
-            FLOATING_TAG="dev"
+            FLOATING="dev"
           else
             PREFIX="PR"
-            FLOATING_TAG="pr-${{ github.event.pull_request.number }}"
+            FLOATING="pr-${{ github.event.pull_request.number }}"
           fi
           
           DATE=$(date +%Y-%m-%d)
@@ -46,9 +49,8 @@ jobs:
           
           VERSION="${PREFIX}-${DATE}-${TIME}-${BUILD_NUM}"
           
-          echo "version=$VERSION" >> $GITHUB_OUTPUT
-          echo "date=$DATE" >> $GITHUB_OUTPUT
-          echo "floating=$FLOATING_TAG" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "floating=${FLOATING}" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -58,6 +60,12 @@ jobs:
         with:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Set build args
+        run: |
+          echo "BUILD_VERSION=${{ steps.version.outputs.version }}" >> $GITHUB_ENV
+          echo "BUILD_DATE=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+          echo "Build version: ${{ steps.version.outputs.version }}"
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -71,6 +79,3 @@ jobs:
           build-args: |
             BUILD_VERSION
             BUILD_DATE
-        env:
-          BUILD_VERSION: ${{ steps.version.outputs.version }}
-          BUILD_DATE: ${{ steps.version.outputs.date }}
