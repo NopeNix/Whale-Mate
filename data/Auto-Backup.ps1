@@ -21,9 +21,10 @@ function Get-StackHashes {
                 # Convert PSCustomObject to hashtable for proper comparison
                 $data.PSObject.Properties | ForEach-Object {
                     $result[$_.Name] = @{
-                        name = $_.Value.name
-                        hash = [string]$_.Value.hash
-                        type = $_.Value.type
+                        name      = $_.Value.name
+                        hash      = [string]$_.Value.hash
+                        type      = $_.Value.type
+                        updatedAt = if ($_.Value.updatedAt) { [string]$_.Value.updatedAt } else { $null }
                     }
                 }
             }
@@ -43,9 +44,10 @@ function Save-StackHashes {
     $cleanHashes = @{}
     foreach ($key in $Hashes.Keys) {
         $cleanHashes[$key] = @{
-            name = [string]$Hashes[$key].name
-            hash = [string]$Hashes[$key].hash
-            type = [string]$Hashes[$key].type
+            name      = [string]$Hashes[$key].name
+            hash      = [string]$Hashes[$key].hash
+            type      = [string]$Hashes[$key].type
+            updatedAt = if ($Hashes[$key].updatedAt) { [string]$Hashes[$key].updatedAt } else { $null }
         }
     }
     
@@ -86,19 +88,23 @@ function Get-PortainerStackHashes {
         
         foreach ($stack in $stacks) {
             try {
-                # Get the stack file content
+                # Get the stack file content - add cache bypass
                 $stackFile = Invoke-RestMethod -SkipCertificateCheck `
-                    -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stack.Id + "/file") `
+                    -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stack.Id + "/file?t=" + [DateTimeOffset]::Now.ToUnixTimeMilliseconds()) `
                     -Headers $Headers `
                     -Method Get `
                     -ErrorAction SilentlyContinue
                 
                 if ($stackFile.StackFileContent) {
                     $hash = Get-ContentHash -Content $stackFile.StackFileContent
+                    # Also get the stack's updatedAt timestamp as additional check
+                    $updatedAt = $stack.UpdatedAt
+                    
                     $Hashes[$stack.Id.ToString()] = @{
-                        name  = $stack.Name
-                        hash  = $hash
-                        type  = "portainer"
+                        name      = $stack.Name
+                        hash      = $hash
+                        type      = "portainer"
+                        updatedAt = $updatedAt
                     }
                 }
             }
@@ -186,10 +192,15 @@ while ($true) {
             # Convert to string to ensure proper comparison
             $prevHash = if ($previousStack) { [string]$previousStack.hash } else { "<none>" }
             $currHash = [string]$currentStack.hash
+            $prevUpdated = if ($previousStack -and $previousStack.updatedAt) { [string]$previousStack.updatedAt } else { "<none>" }
+            $currUpdated = if ($currentStack.updatedAt) { [string]$currentStack.updatedAt } else { "<none>" }
             
-            Write-Host "[Auto-Backup] Stack '$($currentStack.name)': prev=$prevHash curr=$currHash equal=$($prevHash -eq $currHash)"
+            $hashChanged = $prevHash -ne $currHash
+            $timeChanged = $prevUpdated -ne $currUpdated
             
-            if (-not $previousStack -or $prevHash -ne $currHash) {
+            Write-Host "[Auto-Backup] Stack '$($currentStack.name)': hashChanged=$hashChanged timeChanged=$timeChanged"
+            
+            if (-not $previousStack -or $hashChanged -or $timeChanged) {
                 Write-Host "[Auto-Backup] Detected change in stack: $($currentStack.name) (ID: $stackId)"
                 
                 # Create backup - wrap in try/catch to not stop for one failed backup
