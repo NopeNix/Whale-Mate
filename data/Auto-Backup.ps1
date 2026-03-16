@@ -154,13 +154,20 @@ while ($true) {
             if (-not $previousStack -or $previousStack.hash -ne $currentStack.hash) {
                 Write-Host "[Auto-Backup] Detected change in stack: $($currentStack.name) (ID: $stackId)"
                 
-                # Create backup
-                New-AutoBackup -StackId [int]$stackId -StackName $currentStack.name
+                # Create backup - wrap in try/catch to not stop for one failed backup
+                try {
+                    New-AutoBackup -StackId ([int]$stackId) -StackName $currentStack.name
+                }
+                catch {
+                    Write-Host "[Auto-Backup] Error creating backup for stack $($currentStack.name): $_"
+                }
             }
         }
         
-        # Save current hashes for next comparison
-        Save-StackHashes -Hashes $currentHashes
+        # Save current hashes for next comparison (only if we got hashes)
+        if ($currentHashes.Count -gt 0) {
+            Save-StackHashes -Hashes $currentHashes
+        }
         
     }
     catch {
