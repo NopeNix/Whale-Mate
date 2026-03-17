@@ -89,6 +89,10 @@ function Update-DockerComposeStack {
 }
 
 function Get-PortainerStacks {
+    # Get effective settings to ensure we have the correct default mode
+    $effectiveSettings = Get-WhaleMateSettings
+    $defaultUpdatePolicy = $effectiveSettings['AutoUpdateDefaultMode']
+    
     $Stacks = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
     $Stacks = $Stacks | ForEach-Object {
         $StackFileContent = (Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $_.id + "/file") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method get -ErrorAction stop -ContentType "application/json").StackFileContent
@@ -104,7 +108,7 @@ function Get-PortainerStacks {
             $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "NTFYOnly" -Force
         }
         else {
-            $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue $env:AutoUpdateDefaultMode -Force
+            $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue $defaultUpdatePolicy -Force
         }
     
         $_
@@ -114,6 +118,10 @@ function Get-PortainerStacks {
 }
 
 function Get-DockerComposeStacks {
+    # Get effective settings to ensure we have the correct default mode
+    $effectiveSettings = Get-WhaleMateSettings
+    $defaultUpdatePolicy = $effectiveSettings['AutoUpdateDefaultMode']
+    
     $Stacks = (docker compose ls --format json | convertfrom-json)
     $Stacks = $Stacks | ForEach-Object {
         if ((Test-Path "/mnt/rootfs/")) {
@@ -130,11 +138,11 @@ function Get-DockerComposeStacks {
                     $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "NTFYOnly" -Force
                 }
                 else {
-                    $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue $env:AutoUpdateDefaultMode -Force
+                    $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue $defaultUpdatePolicy -Force
                 }
             }
             catch {
-                Write-Host ("Error: unaböe tp read stack file '" + $_.ConfigFiles + "' because " + $_.Exception.Message)
+                Write-Host ("Error: unable to read stack file '" + $_.ConfigFiles + "' because " + $_.Exception.Message)
             }
         }
         else {
