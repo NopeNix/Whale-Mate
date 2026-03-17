@@ -54,7 +54,7 @@ function Update-PortainerStack {
             "Content-Type" = "application/json"
         }
         
-        $Uri = ($env:PortainerBaseAddress + "/api/stacks/" + $stack.id + "?endpointId=" + $Stack.EndpointId)
+        $Uri = ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $stack.id + "?endpointId=" + $Stack.EndpointId)
         
         Invoke-RestMethod $Uri `
             -Method Put `
@@ -64,7 +64,7 @@ function Update-PortainerStack {
             -ErrorAction Stop | Out-Null
     }
     catch {
-        Write-Error ("Update not possible: " + ($env:PortainerBaseAddress + "/api/stacks/" + $stack.id + "?endpointId=" + $Stack.EndpointId) + " " + $_)
+        Write-Error ("Update not possible: " + ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $stack.id + "?endpointId=" + $Stack.EndpointId) + " " + $_)
     }
 }
 
@@ -89,9 +89,9 @@ function Update-DockerComposeStack {
 }
 
 function Get-PortainerStacks {
-    $Stacks = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress + "/api/stacks") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
+    $Stacks = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
     $Stacks = $Stacks | ForEach-Object {
-        $StackFileContent = (Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress + "/api/stacks/" + $_.id + "/file") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method get -ErrorAction stop -ContentType "application/json").StackFileContent
+        $StackFileContent = (Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $_.id + "/file") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method get -ErrorAction stop -ContentType "application/json").StackFileContent
         $_ | Add-Member -NotePropertyName "StackFileContent" -NotePropertyValue $StackFileContent -Force
             
         if ($StackFileContent -imatch "#UpdatePolicy=AutoUpdate") {
@@ -161,10 +161,10 @@ function Get-PortainerStacksUpdateStatus {
 
     switch ($PSCmdlet.ParameterSetName) {
         'Stack' {
-            $Status = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress + "/api/stacks/" + $Stack.Id + "/images_status?refresh=1") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
+            $Status = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $Stack.Id + "/images_status?refresh=1") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
         }
         'StackID' {
-            $Status = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress + "/api/stacks/" + $StackID + "/images_status?refresh=1") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
+            $Status = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $StackID + "/images_status?refresh=1") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
         }
         default {
             Write-Error 'No valid parameter provided. Must specify either -Stack or -ID.'
@@ -404,14 +404,14 @@ function Backup-PortainerStack {
         }
         
         $stack = Invoke-RestMethod -SkipCertificateCheck `
-            -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $StackId) `
+            -Uri ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $StackId) `
             -Headers $Headers `
             -Method Get `
             -ErrorAction Stop
             
         # Get the stack file content
         $stackFile = Invoke-RestMethod -SkipCertificateCheck `
-            -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $StackId + "/file") `
+            -Uri ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $StackId + "/file") `
             -Headers $Headers `
             -Method Get `
             -ErrorAction Stop

@@ -1,8 +1,8 @@
 Import-Module Pode
 
 # Prep
-if ($null -ne $env:PortainerBaseAddress -or $env:PortainerBaseAddress -eq "") {
-    $env:PortainerBaseAddress = $env:PortainerBaseAddress.TrimEnd("/")
+if ($null -ne $env:PortainerBaseAddress.TrimEnd("/") -or $env:PortainerBaseAddress.TrimEnd("/") -eq "") {
+    $env:PortainerBaseAddress.TrimEnd("/") = $env:PortainerBaseAddress.TrimEnd("/")
 }
 
 Start-PodeServer -Verbose {
@@ -77,7 +77,7 @@ Start-PodeServer -Verbose {
 
     # Portainer: Stacks API
     Add-PodeRoute -Method Get -Path "/api/portainer/stacks" -ScriptBlock {
-        if ($null -eq $env:PortainerBaseAddress -or $env:PortainerBaseAddress.trim() -eq "") {
+        if ($null -eq $env:PortainerBaseAddress.TrimEnd("/") -or $env:PortainerBaseAddress.TrimEnd("/").trim() -eq "") {
             Write-PodeJsonResponse -Value @{
                 success = $false
                 error   = ("Portainer Stacks is disabled because no PortainerBaseAddress was given")
@@ -180,13 +180,13 @@ Start-PodeServer -Verbose {
             }
 
             $stack = Invoke-RestMethod -SkipCertificateCheck `
-                -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stackId) `
+                -Uri ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $stackId) `
                 -Headers $Headers `
                 -Method Get `
                 -ErrorAction Stop
 
             $stackFile = Invoke-RestMethod -SkipCertificateCheck `
-                -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stackId + "/file") `
+                -Uri ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $stackId + "/file") `
                 -Headers $Headers `
                 -Method Get `
                 -ErrorAction Stop
@@ -201,7 +201,7 @@ Start-PodeServer -Verbose {
             }
             $BodyJson = $Body | ConvertTo-Json -Depth 10
 
-            $Uri = ($env:PortainerBaseAddress + "/api/stacks/" + $stackId + "?endpointId=" + $stack.EndpointId)
+            $Uri = ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $stackId + "?endpointId=" + $stack.EndpointId)
             
             Invoke-RestMethod $Uri `
                 -Method Put `
@@ -212,7 +212,7 @@ Start-PodeServer -Verbose {
                 -ErrorAction Stop
 
             if ($env:NTFYEnabled -eq $true) {
-                $Message = "'" + $stack.Name + "' has been manually updated (Portainer - " + ([System.Uri]$env:PortainerBaseAddress) + ")"
+                $Message = "'" + $stack.Name + "' has been manually updated (Portainer - " + ([System.Uri]$env:PortainerBaseAddress.TrimEnd("/")) + ")"
                 Send-NTFYMessage -Message $Message
             }
 
@@ -384,7 +384,7 @@ Start-PodeServer -Verbose {
             }
 
             $currentStack = Invoke-RestMethod -SkipCertificateCheck `
-                -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stackId) `
+                -Uri ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $stackId) `
                 -Headers $Headers `
                 -Method Get `
                 -ErrorAction Stop
@@ -400,7 +400,7 @@ Start-PodeServer -Verbose {
             }
 
             $updateResponse = Invoke-RestMethod -SkipCertificateCheck `
-                -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stackId + "?endpointId=" + $endpointId) `
+                -Uri ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $stackId + "?endpointId=" + $endpointId) `
                 -Headers $Headers `
                 -Method Put `
                 -Body ($updatePayload | ConvertTo-Json -Depth 10) `

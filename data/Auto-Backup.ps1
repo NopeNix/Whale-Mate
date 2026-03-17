@@ -67,7 +67,7 @@ function Get-ContentHash {
 
 # Get stack hashes from Portainer
 function Get-PortainerStackHashes {
-    if (-not $env:PortainerBaseAddress -or -not $env:PortainerAPIToken) {
+    if (-not $env:PortainerBaseAddress.TrimEnd("/") -or -not $env:PortainerAPIToken) {
         Write-Host "[Auto-Backup] Skipping - no Portainer credentials"
         return @{}
     }
@@ -81,7 +81,7 @@ function Get-PortainerStackHashes {
         }
         
         $stacks = Invoke-RestMethod -SkipCertificateCheck `
-            -Uri ($env:PortainerBaseAddress + "/api/stacks") `
+            -Uri ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks") `
             -Headers $Headers `
             -Method Get `
             -ErrorAction SilentlyContinue
@@ -90,7 +90,7 @@ function Get-PortainerStackHashes {
             try {
                 # Get the stack file content - add cache bypass
                 $stackFile = Invoke-RestMethod -SkipCertificateCheck `
-                    -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $stack.Id + "/file?t=" + [DateTimeOffset]::Now.ToUnixTimeMilliseconds()) `
+                    -Uri ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $stack.Id + "/file?t=" + [DateTimeOffset]::Now.ToUnixTimeMilliseconds()) `
                     -Headers $Headers `
                     -Method Get `
                     -ErrorAction SilentlyContinue
@@ -138,7 +138,7 @@ function New-AutoBackup {
         }
         
         $stackFile = Invoke-RestMethod -SkipCertificateCheck `
-            -Uri ($env:PortainerBaseAddress + "/api/stacks/" + $StackId + "/file") `
+            -Uri ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $StackId + "/file") `
             -Headers $Headers `
             -Method Get `
             -ErrorAction Stop
