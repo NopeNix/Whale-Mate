@@ -12,15 +12,42 @@
     <style>
         :root {
             --empty-state-bg: rgba(30, 30, 30, 0.5);
+            --footer-height: 50px;
+        }
+
+        html, body {
+            height: 100%;
         }
 
         body {
             background-color: #1a1a1a;
             color: #e0e0e0;
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            padding-bottom: var(--footer-height);
+        }
+
+        main {
+            flex: 1 0 auto;
         }
 
         .navbar {
             border-bottom: 1px solid #2d2d2d;
+        }
+
+        .app-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: var(--footer-height);
+            background-color: #1a1a1a;
+            border-top: 1px solid #2d2d2d;
+            z-index: 1020;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         body[data-bs-theme="dark"] .theme-switch:hover {
@@ -85,8 +112,8 @@
 </head>
 
 <body class="bg-dark text-light" data-bs-theme="dark">
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary">
+    <!-- Sticky Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary sticky-top">
         <div class="container-fluid">
             <!-- Logo -->
             <a class="navbar-brand" href="stacks.html">
@@ -707,15 +734,16 @@
             document.getElementById('clearVersionsBtn').addEventListener('click', clearAllVersions);
         });
     </script>
-    <!-- Footer -->
-    <footer class="navbar navbar-expand-lg navbar-dark bg-dark border-top border-secondary mt-auto py-3">
-        <div class="container-fluid justify-content-between">
+    <!-- Sticky Footer -->
+    <footer class="app-footer">
+        <div class="container d-flex justify-content-between align-items-center">
             <div class="text-muted small">
                 <i class="fas fa-ship me-1"></i>Whale Mate
                 <span class="ms-2" id="footerVersion">Loading...</span>
             </div>
-            <div>
-                <a href="https://github.com/NopeNix/Whale-Mate" target="_blank" class="btn btn-sm btn-outline-secondary" title="GitHub Repository">
+            <div class="text-muted small">
+                Made with <i class="fas fa-heart text-danger"></i> by NopeNix &amp; Community
+                <a href="https://github.com/NopeNix/Whale-Mate" target="_blank" class="btn btn-sm btn-outline-secondary ms-3" title="GitHub Repository">
                     <i class="fab fa-github"></i>
                 </a>
             </div>
@@ -723,14 +751,11 @@
     </footer>
 
     <script>
-        // Load build version
         fetch('/api/version')
-            .then(response => response.json())
+            .then(r => r.json())
             .then(data => {
                 let version = data.version;
-                if (!version || version === 'unknown' || version === '') {
-                    version = 'dev';
-                }
+                if (!version || version === 'unknown' || version === '') version = 'dev';
                 document.getElementById('footerVersion').textContent = version;
             })
             .catch(() => {
