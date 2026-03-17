@@ -9,3 +9,4 @@ tmp
 stack-backups
 stack-hashes.json
 .continue
+.vscode

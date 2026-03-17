@@ -8,12 +8,14 @@ FROM mcr.microsoft.com/powershell:alpine-3.20
 # Create data directory first
 RUN mkdir -p /data
 
-# Write version info from build args (passed from CI)
-RUN echo "$BUILD_VERSION" > /data/version.txt && echo "$BUILD_DATE" > /data/build_date.txt
-
-# Set environment variables - use the BUILD_ARG value or fall back to git-derived version
+# Set environment variables from build args (redeclare ARG after FROM is not needed when using ENV with ARG default)
+ARG BUILD_VERSION
+ARG BUILD_DATE
 ENV BUILD_VERSION=${BUILD_VERSION}
 ENV BUILD_DATE=${BUILD_DATE}
+
+# Write version info from build args
+RUN echo "$BUILD_VERSION" > /data/version.txt && echo "$BUILD_DATE" > /data/build_date.txt
 
 # Install necessary packages
 RUN apk update && \
