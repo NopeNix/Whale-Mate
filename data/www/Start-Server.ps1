@@ -850,4 +850,50 @@ Start-PodeServer -Verbose {
             } -StatusCode 500
         }
     }
+
+    # Test Portainer connection - works with current field values
+    Add-PodeRoute -Method Post -Path "/api/test-portainer" -ScriptBlock {
+        try {
+            # Get settings from request body (current field values)
+            $baseAddress = $WebEvent.Data.PortainerBaseAddress
+            $apiToken = $WebEvent.Data.PortainerAPIToken
+            
+            # Validate inputs
+            if ([string]::IsNullOrWhiteSpace($baseAddress)) {
+                throw "Portainer Base Address is not configured. Please enter the URL."
+            }
+            if ([string]::IsNullOrWhiteSpace($apiToken)) {
+                throw "Portainer API Token is not configured. Please enter the token."
+            }
+            
+            # Trim trailing slash
+            $baseAddress = $baseAddress.TrimEnd("/")
+            
+            $Headers = @{
+                "X-API-KEY" = $apiToken
+            }
+            
+            # Try to get stacks - this validates the connection
+            $stacks = Invoke-RestMethod -SkipCertificateCheck `
+                -Uri ($baseAddress + "/api/stacks") `
+                -Headers $Headers `
+                -Method Get `
+                -ErrorAction Stop
+            
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = @{ 
+                    message = "Portainer connection successful"
+                    stackCount = $stacks.Count
+                    url = $baseAddress
+                }
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
 }
