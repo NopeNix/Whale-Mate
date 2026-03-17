@@ -1,8 +1,6 @@
 [![GitHub Repo stars](https://img.shields.io/github/stars/nopenix/whale-mate)](https://github.com/NopeNix/Whale-Mate)
 [![Build and Push to Docker Hub](https://github.com/NopeNix/whale-mate/actions/workflows/Build%20and%20Push%20to%20Docker%20Hub.yml/badge.svg?branch=main)](https://github.com/NopeNix/whale-mate/actions/workflows/Build%20and%20Push%20to%20Docker%20Hub.yml)
-[![Dev Build](https://github.com/NopeNix/whale-mate/actions/workflows/Build%20and%20Push%20to%20Docker%20Hub.yml/badge.svg?branch=dev)](https://github.com/NopeNix/whale-mate/actions/workflows/Build%20and%20Push%20to%20Docker%20Hub.yml)
 [![Docker Pulls](https://img.shields.io/docker/pulls/nopenix/whale-mate)](https://hub.docker.com/r/nopenix/whale-mate)
-
 
 # Whale Mate - Automated Docker Stack Manager & Backup Solution
 
@@ -81,7 +79,7 @@
 
 ## Introduction
 
-Whale Mate is a comprehensive Docker stack management solution that goes far beyond simple container updates. It provides:
+Whale Mate is a Docker stack management tool that helps you keep your containers updated and backed up. It provides:
 
 - **Automatic Container Updates**: Keep your containers up-to-date based on flexible policies
 - **Version History & Backups**: Automatic and manual backups of your compose files with full version control
@@ -90,6 +88,7 @@ Whale Mate is a comprehensive Docker stack management solution that goes far bey
 - **NTFY Notifications**: Get push notifications about updates, backups, and restores
 - **Scheduled & Manual Updates**: CRON-based automatic updates or trigger updates on-demand
 - **Full Activity Logs**: Complete audit trail of all actions performed
+- **Web-Based Settings**: Configure all options through the UI without restarting
 
 ## Features
 
@@ -98,28 +97,38 @@ Whale Mate is a comprehensive Docker stack management solution that goes far bey
 - **Docker Compose Support**: Manage standalone docker-compose.yml files
 - **Visual Dashboard**: Beautiful dark-mode UI with table and card views
 - **Real-time Status**: See update status, backup status, and stack health at a glance
+- **View Toggle**: Switch between table and card views for better visualization
 
 ### Backup & Versioning
-- **Automatic Backups**: Stacks are automatically backed up when changes are detected
+- **Automatic Backups**: Stacks are automatically backed up when changes are detected (every 20 seconds)
 - **Manual Backups**: Trigger backups on-demand from the web UI
 - **Version History**: Full timeline of all backups with timestamps
-- **Restore Functionality**: Revert any stack to a previous backup version
+- **Restore Functionality**: Revert any stack to a previous backup version with confirmation dialog
 - **Delete Versions**: Clean up old versions individually or in bulk
+- **Latest Activity View**: See the most recent backups across all stacks at a glance
 
 ### Update Automation
 - **Flexible Update Policies**:
   - `AutoUpdate`: Automatically update the stack when images change
   - `NTFYOnly`: Only send notification about available updates
   - `DoNotUpdate`: Never update this stack (monitor only)
+- **Per-Stack Control**: Override default policy via comments in compose files
 - **CRON Scheduling**: Runs updates on your configurable schedule
 - **Manual Trigger**: One-click manual update button for instant updates
-- **Per-Stack Control**: Override default policy for individual stacks
 
 ### Notifications & Logging
 - **NTFY Integration**: Push notifications for updates, backups, and restores
 - **Full Activity Logs**: Complete audit trail with search and filtering
-- **Stack-specific Logs**: Filter logs by specific stack name
+- **Stack-specific Logs**: Filter logs by specific stack name via URL parameter
 - **Export Logs**: Download logs as text files for analysis
+- **Auto-refresh**: Optional 5-second auto-refresh on logs page
+
+### Settings & Configuration
+- **Web-Based Settings UI**: Configure all options through the dashboard
+- **Settings Override**: Web settings override environment variables
+- **Immediate Application**: Settings apply immediately without restart
+- **Connection Testing**: Test Portainer and NTFY connections directly from UI
+- **Reset Options**: Reset individual settings or all settings to defaults
 
 ## Prerequisites
 
@@ -141,13 +150,14 @@ Before using Whale Mate, you'll need:
 ```yaml
 version: '3'
 services:
-  updateportainerstacks:
+  whale-mate:
     image: nopenix/whale-mate:latest
     ports:
       - 8080:8080 # Exposes HTTP 
     restart: unless-stopped
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # only needed for docker copmpose
+      - /var/run/docker.sock:/var/run/docker.sock # only needed for docker compose
+      - /versions:/data/versions
       - /:/mnt/rootfs/:ro # only needed for docker compose and only if you want the update feature
       - db:/data/db
     environment:
@@ -166,6 +176,7 @@ volumes:
 ```
 
 2. Customize the environment variables (Optional):
+   - `/versions:/data/versions`: Volume to persist your stack backups (required for versioning & restore)
    - `PortainerBaseAddress`: Your Portainer instance URL
    - `PortainerAPIToken`: Generate this in Portainer (In Portainer: My Account > Access Tokens)
    - Adjust `CRON_SCHEDULE` for your needs (default every 5 mins)
@@ -182,7 +193,7 @@ Whale Mate runs three background services via Supervisord:
 
 1. **Updater Service**: Runs the update check script on your CRON schedule
 2. **Web Dashboard Service**: Serves the web UI and API on port 8080
-3. **Auto-Backup Service**: Continuously monitors for stack changes and creates automatic backups
+3. **Auto-Backup Service**: Continuously monitors for stack changes and creates automatic backups (every 20 seconds)
 
 This ensures that:
 - Updates happen on schedule without manual intervention
@@ -223,6 +234,7 @@ You can control updating behavior for individual stacks by adding comments to yo
    - **Stacks**: Monitor status, trigger updates, view backup status
    - **Update Logs**: Search and filter activity logs
    - **Versioning**: View backup history, restore previous versions, create manual backups
+   - **Settings**: Configure all application settings
 
 ### Quick Actions (Portainer Stacks)
 From the Stacks page you can:
@@ -262,13 +274,15 @@ When configured with NTFY, you'll receive notifications about:
 
 Whale Mate automatically backs up your Portainer stack configurations when changes are detected. This feature allows you to:
 
-- **Automatic Backups**: Stacks are automatically backed up when content changes are detected
+- **Automatic Backups**: Stacks are automatically backed up when content changes are detected (checks every 20 seconds)
 - **Manual Backups**: You can manually trigger a backup anytime via the web UI
 - **Version Timeline**: View the complete history of backups for each stack
+- **Restore**: Revert to any previous version with confirmation dialog
+- **Delete**: Remove individual versions or clear all history
 
 ### How it works:
 
-1. The auto-backup service checks every minute for changes in your Portainer stacks
+1. The auto-backup service checks every 20 seconds for changes in your Portainer stacks
 2. Changes are detected by comparing SHA-256 hashes and timestamps
 3. When a change is detected, a timestamped backup is created in `/data/versions/<stack-id>/`
 4. You can view all backups in the Versioning section of the web UI
@@ -361,6 +375,9 @@ docker-compose logs -f
 **Q: How often does it check for updates?**  
 A: By default every 5 minutes (configurable via CRON_SCHEDULE)
 
+**Q: How often does it check for backup changes?**  
+A: Every 20 seconds automatically
+
 **Q: Can I exclude specific stacks from updates?**  
 A: Yes, add `#UpdatePolicy=DoNotUpdate` to your stack file
 
@@ -378,6 +395,12 @@ A: Yes, you can use it for Docker Compose stacks only, or even just as a log vie
 
 **Q: How do I restore a stack to a previous version?**  
 A: Go to Versioning > Select your stack > Click Restore on any backup version > Confirm.
+
+**Q: Can I configure settings through the UI?**  
+A: Yes! The Settings page allows you to configure all options. Settings are saved and override environment variables.
+
+**Q: Do I need to restart after changing settings?**  
+A: No! Settings are applied immediately after saving.
 
 ## Contributing
 
