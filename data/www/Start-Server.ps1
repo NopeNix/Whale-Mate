@@ -722,11 +722,70 @@ Start-PodeServer -Verbose {
         }
     }
 
-    # Test NTFY configuration
-    Add-PodeRoute -Method Post -Path "/api/test-notification" -ScriptBlock {
-        . ($PSScriptRoot + "/../functions.ps1")
+    # Get raw environment variable values (for determining defaults)
+    Add-PodeRoute -Method Get -Path "/api/settings/env" -ScriptBlock {
         try {
-            Test-NTFYConfiguration
+            $envSettings = @{
+                AutoUpdateDefaultMode = $env:AutoUpdateDefaultMode
+                CRON_SCHEDULE = $env:CRON_SCHEDULE
+                PortainerBaseAddress = $env:PortainerBaseAddress
+                PortainerAPIToken = $env:PortainerAPIToken
+                NTFYEnabled = $env:NTFYEnabled
+                NTFYTopicURL = $env:NTFYTopicURL
+                NTFYToken = $env:NTFYToken
+            }
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = $envSettings
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
+
+    # Test NTFY configuration - works with current field values, doesn't require enabled
+    Add-PodeRoute -Method Post -Path "/api/test-notification" -ScriptBlock {
+        try {
+            # Get settings from request body (current field values) or fall back to saved/env
+            $topicUrl = $WebEvent.Data.NTFYTopicURL
+            $token = $WebEvent.Data.NTFYToken
+            
+            # If not provided in request, try to get from settings/env
+            if ([string]::IsNullOrWhiteSpace($topicUrl)) {
+                . ($PSScriptRoot + "/../functions.ps1")
+                $settings = Get-WhaleMateSettings
+                $topicUrl = $settings['NTFYTopicURL']
+                $token = $settings['NTFYToken']
+            }
+            
+            if ([string]::IsNullOrWhiteSpace($topicUrl)) {
+                throw "NTFY Topic URL is not configured. Please enter a topic URL."
+            }
+            
+            $message = "🐳 Whale Mate Test - Your notification configuration is working!"
+            
+            $headers = @{}
+            if (-not [string]::IsNullOrWhiteSpace($token)) {
+                $headers['Authorization'] = "Bearer $token"
+            }
+            
+            $params = @{
+                Uri = $topicUrl
+                Method = 'POST'
+                Body = $message
+                ErrorAction = 'Stop'
+            }
+            
+            if ($headers.Count -gt 0) {
+                $params['Headers'] = $headers
+            }
+            
+            Invoke-WebRequest @params | Out-Null
+            
             Write-PodeJsonResponse -Value @{
                 success = $true
                 data    = @{ message = "Test notification sent successfully" }
