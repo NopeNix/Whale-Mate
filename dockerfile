@@ -9,8 +9,7 @@ FROM mcr.microsoft.com/powershell:alpine-3.20
 RUN mkdir -p /data
 
 # Write version info from build args (passed from CI)
-echo "$BUILD_VERSION" > /data/version.txt
-echo "$BUILD_DATE" > /data/build_date.txt
+RUN echo "$BUILD_VERSION" > /data/version.txt && echo "$BUILD_DATE" > /data/build_date.txt
 
 # Set environment variables - use the BUILD_ARG value or fall back to git-derived version
 ENV BUILD_VERSION=${BUILD_VERSION}
