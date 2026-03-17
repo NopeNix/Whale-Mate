@@ -98,14 +98,22 @@ function Get-PortainerStacks {
         $StackFileContent = (Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $_.id + "/file") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method get -ErrorAction stop -ContentType "application/json").StackFileContent
         $_ | Add-Member -NotePropertyName "StackFileContent" -NotePropertyValue $StackFileContent -Force
             
-        if ($StackFileContent -imatch "#UpdatePolicy=AutoUpdate") {
-            $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "AutoUpdate" -Force
-        }
-        elseif ($StackFileContent -imatch "#UpdatePolicy=DoNotUpdate") {
+        # Check for UpdatePolicy in comments - support various formats with flexible whitespace
+        # Patterns: #UpdatePolicy=AutoUpdate, # UpdatePolicy=AutoUpdate, etc.
+        # Use multiline mode (?m) and check each line individually
+        $hasDoNotUpdate = $StackFileContent -match '(?m)^\s*#\s*UpdatePolicy\s*=\s*DoNotUpdate\s*(?:#.*)?$'
+        $hasNTFYOnly = $StackFileContent -match '(?m)^\s*#\s*UpdatePolicy\s*=\s*NTFYOnly\s*(?:#.*)?$'
+        $hasAutoUpdate = $StackFileContent -match '(?m)^\s*#\s*UpdatePolicy\s*=\s*AutoUpdate\s*(?:#.*)?$'
+        
+        # Priority: DoNotUpdate > NTFYOnly > AutoUpdate > default
+        if ($hasDoNotUpdate) {
             $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "DoNotUpdate" -Force
         }
-        elseif ($StackFileContent -imatch "#UpdatePolicy=NTFYOnly") {
+        elseif ($hasNTFYOnly) {
             $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "NTFYOnly" -Force
+        }
+        elseif ($hasAutoUpdate) {
+            $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "AutoUpdate" -Force
         }
         else {
             $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue $defaultUpdatePolicy -Force
@@ -128,14 +136,22 @@ function Get-DockerComposeStacks {
             try {
                 $ComposeFile = (Get-Content ("/mnt/rootfs/" + $_.ConfigFiles) -ErrorAction Stop -Raw)
 
-                if ($ComposeFile -imatch "#UpdatePolicy=AutoUpdate") {
-                    $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "AutoUpdate" -Force
-                }
-                elseif ($ComposeFile -imatch "#UpdatePolicy=DoNotUpdate") {
+                # Check for UpdatePolicy in comments - support various formats with flexible whitespace
+                # Patterns: #UpdatePolicy=AutoUpdate, # UpdatePolicy=AutoUpdate, etc.
+                # Use multiline mode (?m) and check each line individually
+                $hasDoNotUpdate = $ComposeFile -match '(?m)^\s*#\s*UpdatePolicy\s*=\s*DoNotUpdate\s*(?:#.*)?$'
+                $hasNTFYOnly = $ComposeFile -match '(?m)^\s*#\s*UpdatePolicy\s*=\s*NTFYOnly\s*(?:#.*)?$'
+                $hasAutoUpdate = $ComposeFile -match '(?m)^\s*#\s*UpdatePolicy\s*=\s*AutoUpdate\s*(?:#.*)?$'
+                
+                # Priority: DoNotUpdate > NTFYOnly > AutoUpdate > default
+                if ($hasDoNotUpdate) {
                     $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "DoNotUpdate" -Force
                 }
-                elseif ($ComposeFile -imatch "#UpdatePolicy=NTFYOnly") {
+                elseif ($hasNTFYOnly) {
                     $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "NTFYOnly" -Force
+                }
+                elseif ($hasAutoUpdate) {
+                    $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "AutoUpdate" -Force
                 }
                 else {
                     $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue $defaultUpdatePolicy -Force
@@ -143,6 +159,7 @@ function Get-DockerComposeStacks {
             }
             catch {
                 Write-Host ("Error: unable to read stack file '" + $_.ConfigFiles + "' because " + $_.Exception.Message)
+                $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue $defaultUpdatePolicy -Force
             }
         }
         else {
