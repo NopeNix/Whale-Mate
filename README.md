@@ -12,8 +12,72 @@
 - Portainer minimum Version 2.30.0 (optional - only needed for Portainer integration)
 - Portainer Business Edition [get a free max 3 node license for non commercial here](https://www.portainer.io/take-3)
 
-## Screenshot
-![Screenshot Stacks](./img/Screenshot-Stacks.png)
+## Screenshots
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="./img/01%20Portainer%20Stacks.png" target="_blank">
+        <img src="./img/01%20Portainer%20Stacks.png" width="250" alt="Portainer Stacks">
+      </a>
+      <br>Portainer Stacks
+    </td>
+    <td align="center">
+      <a href="./img/02%20Docker%20Compose%20Stacks.png" target="_blank">
+        <img src="./img/02%20Docker%20Compose%20Stacks.png" width="250" alt="Docker Compose Stacks">
+      </a>
+      <br>Docker Compose Stacks
+    </td>
+    <td align="center">
+      <a href="./img/03%20Update%20Logs.png" target="_blank">
+        <img src="./img/03%20Update%20Logs.png" width="250" alt="Update Logs">
+      </a>
+      <br>Update Logs
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="./img/04%20Versioning%20Overview.png" target="_blank">
+        <img src="./img/04%20Versioning%20Overview.png" width="250" alt="Versioning Overview">
+      </a>
+      <br>Versioning Overview
+    </td>
+    <td align="center">
+      <a href="./img/05%20Versioning%20Stack%20Selected.png" target="_blank">
+        <img src="./img/05%20Versioning%20Stack%20Selected.png" width="250" alt="Versioning Stack Selected">
+      </a>
+      <br>Versioning Stack Selected
+    </td>
+    <td align="center">
+      <a href="./img/06%20Versioning%20Stack%20selected%20stackfile%20preview.png" target="_blank">
+        <img src="./img/06%20Versioning%20Stack%20selected%20stackfile%20preview.png" width="250" alt="Stackfile Preview">
+      </a>
+      <br>Stackfile Preview
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <a href="./img/07%20Versioning%20Stack%20selected%20confirm%20restore%20dialog.png" target="_blank">
+        <img src="./img/07%20Versioning%20Stack%20selected%20confirm%20restore%20dialog.png" width="250" alt="Restore Dialog">
+      </a>
+      <br>Restore Dialog
+    </td>
+    <td align="center">
+      <a href="./img/08%20Settings%20upper.png" target="_blank">
+        <img src="./img/08%20Settings%20upper.png" width="250" alt="Settings Upper">
+      </a>
+      <br>Settings (Upper)
+    </td>
+    <td align="center">
+      <a href="./img/09%20Settings%20lower.png" target="_blank">
+        <img src="./img/09%20Settings%20lower.png" width="250" alt="Settings Lower">
+      </a>
+      <br>Settings (Lower)
+    </td>
+  </tr>
+</table>
+
+*Click on any image to view it in full size*
 
 ## Introduction
 
