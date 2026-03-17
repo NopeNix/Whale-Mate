@@ -1,15 +1,28 @@
 . ($PSScriptRoot + "/functions.ps1")
 
-# Prep
-if ($null -ne $env:PortainerBaseAddress -or $env:PortainerBaseAddress -eq "") {
-    $env:PortainerBaseAddress = $env:PortainerBaseAddress.TrimEnd("/")
-}
+# Load settings (saved settings override environment variables)
+$settings = Get-WhaleMateSettings
 
-# Portainer Updates
-if ($null -ne $env:PortainerBaseAddress -and $env:PortainerBaseAddress.Trim(" ") -ne "") {
-    # Sanatize Vars
-    $env:PortainerBaseAddress = $env:PortainerBaseAddress.TrimEnd("/")
-    $PortainerBaseDomain = ([System.Uri]::new($env:PortainerBaseAddress)).Host
+# Apply loaded settings to environment variables for backward compatibility
+# Always trim trailing "/" from PortainerBaseAddress to ensure consistent URLs
+$env:AutoUpdateDefaultMode = $settings['AutoUpdateDefaultMode']
+$env:CRON_SCHEDULE = $settings['CRON_SCHEDULE']
+$env:PortainerBaseAddress = if ($settings['PortainerBaseAddress']) { $settings['PortainerBaseAddress'].TrimEnd("/") } else { "" }
+$env:PortainerAPIToken = $settings['PortainerAPIToken']
+$env:NTFYEnabled = $settings['NTFYEnabled']
+$env:NTFYTopicURL = $settings['NTFYTopicURL']
+$env:NTFYToken = $settings['NTFYToken']
+
+Write-Host "[Update-Stacks] Loaded settings: AutoUpdateDefaultMode=$($settings['AutoUpdateDefaultMode']), CRON=$($settings['CRON_SCHEDULE']), NTFYEnabled=$($settings['NTFYEnabled']), PortainerBaseAddress=$($env:PortainerBaseAddress)" -ForegroundColor Cyan
+
+# Portainer Updates - only proceed if PortainerBaseAddress is configured
+if (-not [string]::IsNullOrWhiteSpace($env:PortainerBaseAddress)) {
+    # Extract domain for display
+    try {
+        $PortainerBaseDomain = ([System.Uri]::new($env:PortainerBaseAddress)).Host
+    } catch {
+        $PortainerBaseDomain = $env:PortainerBaseAddress
+    }
 
     # Get All Stacks
     Write-Host -Message ("Getting all Portainer Stacks...") -ForegroundColor Blue
@@ -22,7 +35,7 @@ if ($null -ne $env:PortainerBaseAddress -and $env:PortainerBaseAddress.Trim(" ")
         Exit 1
     }
 
-    # Get All Stack Status and strigger according action
+    # Get All Stack Status and trigger according action
     Write-Host -Message ("Looking for outdated Portainer Stacks on '$PortainerBaseDomain'`n (Default update Policy is '$env:AutoUpdateDefaultMode')") -ForegroundColor Blue
 
     $NotifiedStacks = Get-NotifiedStacks
@@ -53,7 +66,7 @@ if ($null -ne $env:PortainerBaseAddress -and $env:PortainerBaseAddress.Trim(" ")
                         if ($CurrentObj.UpdatePolicy -eq "AutoUpdate") {
                             try {
                                 Update-PortainerStack -Stack $CurrentObj -ErrorAction Stop
-                                Send-NTFYMessage -Message ("'" + $CurrentObj.name + "' is outdated, update has been triggered! (Portainer - " + ([System.Uri]$env:PortainerBaseAddress) + ")")
+                                Send-NTFYMessage -Message ("'" + $CurrentObj.name + "' is outdated, update has been triggered! (Portainer - " + ([System.Uri]$env:PortainerBaseAddress.TrimEnd("/")) + ")")
                                 Write-Host -Message ("  -> Update has been triggered successfully!") -ForegroundColor Green
                             }
                             catch {
@@ -65,7 +78,7 @@ if ($null -ne $env:PortainerBaseAddress -and $env:PortainerBaseAddress.Trim(" ")
                                 Write-Host -Message ("  -> Notification has already been sent")
                             }
                             else {
-                                Send-NTFYMessage -Message ("'" + $CurrentObj.name + "' is outdated, a manual update is required (Portainer - " + ([System.Uri]$env:PortainerBaseAddress) + ")")
+                                Send-NTFYMessage -Message ("'" + $CurrentObj.name + "' is outdated, a manual update is required (Portainer - " + ([System.Uri]$env:PortainerBaseAddress.TrimEnd("/")) + ")")
                                 Add-NotifiedStacks $CurrentObj.name
                                 Write-Host -Message ("  -> Notification has been sent") -ForegroundColor DarkGreen
                             }
@@ -83,7 +96,7 @@ if ($null -ne $env:PortainerBaseAddress -and $env:PortainerBaseAddress.Trim(" ")
                         Write-Host -Message (" -> [ UP2DATE  ] : " + $CurrentObj.Name + $Status.Message) -ForegroundColor Green
                         if ($NotifiedStacks -contains $CurrentObj.Name) {
                             Remove-NotifiedStacks -Names $CurrentObj.Name
-                            Send-NTFYMessage -Message ("'" + $CurrentObj.name + "' has been updated to latest version (Portainer - " + ([System.Uri]$env:PortainerBaseAddress) + ")")
+                            Send-NTFYMessage -Message ("'" + $CurrentObj.name + "' has been updated to latest version (Portainer - " + ([System.Uri]$env:PortainerBaseAddress.TrimEnd("/")) + ")")
 
                         }
                     }
@@ -126,7 +139,7 @@ if ($true) {
         Exit 1
     }
 
-    # Get All Stack Status and strigger according action
+    # Get All Stack Status and trigger according action
     Write-Host -Message ("Looking for outdated Docker Compose Stacks on '/var/run/docker.sock'`n (Default update Policy is '$env:AutoUpdateDefaultMode')") -ForegroundColor Blue
 
     $NotifiedStacks = Get-NotifiedStacks

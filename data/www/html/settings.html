@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en" class="h-100">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Whale Mate - Settings</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --footer-height: 50px;
+            --actions-height: 60px;
+        }
+        body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            min-height: 100vh;
+            padding-bottom: calc(var(--footer-height) + var(--actions-height));
+        }
+        .setting-card {
+            background-color: #212529;
+            border: 1px solid #2d2d2d;
+        }
+        .form-control, .form-select {
+            background-color: #2d2d2d;
+            border-color: #3d3d3d;
+            color: #e0e0e0;
+        }
+        .form-control:focus, .form-select:focus {
+            background-color: #2d2d2d;
+            border-color: #0d6efd;
+            color: #e0e0e0;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+        }
+        .input-group {
+            max-width: 500px;
+        }
+        .input-group-text {
+            background-color: #3d3d3d;
+            border-color: #3d3d3d;
+            color: #e0e0e0;
+        }
+        .setting-description {
+            color: #adb5bd;
+            font-size: 0.9rem;
+        }
+        .setting-example {
+            color: #6c757d;
+            font-size: 0.85rem;
+            font-style: italic;
+        }
+        .warning-box {
+            background-color: rgba(255, 193, 7, 0.1);
+            border-left: 4px solid #ffc107;
+        }
+        .form-check-input {
+            background-color: #2d2d2d;
+            border-color: #3d3d3d;
+        }
+        .form-check-input:checked {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+        /* Floating action bar - sits above footer */
+        .floating-actions {
+            position: fixed;
+            bottom: var(--footer-height);
+            left: 0;
+            right: 0;
+            background-color: rgba(33, 37, 41, 0.98);
+            border-top: 1px solid #2d2d2d;
+            padding: 0.5rem 0;
+            z-index: 1030;
+            backdrop-filter: blur(10px);
+            height: var(--actions-height);
+        }
+        .floating-actions .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            height: 100%;
+        }
+        .floating-actions .btn {
+            padding: 0.375rem 1rem;
+            font-size: 0.9rem;
+        }
+        /* Sticky footer */
+        .app-footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: var(--footer-height);
+            background-color: #1a1a1a;
+            border-top: 1px solid #2d2d2d;
+            z-index: 1020;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        @media (max-width: 576px) {
+            .floating-actions .container {
+                gap: 0.5rem;
+            }
+            .floating-actions .btn {
+                flex: 1;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-dark text-light d-flex flex-column h-100" data-bs-theme="dark">
+
+    <!-- Sticky Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary sticky-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="stacks.html">
+                <i class="fas fa-ship me-2 text-primary"></i>
+                <span class="fw-bold">Whale Mate</span>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#topNavbar">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse justify-content-end" id="topNavbar">
+                <ul class="navbar-nav align-items-center">
+                    <li class="nav-item mx-2"><a class="nav-link d-flex align-items-center" href="stacks.html"><i class="fas fa-box me-1"></i><span>Stacks</span></a></li>
+                    <li class="nav-item mx-2"><a class="nav-link d-flex align-items-center" href="logs.html"><i class="fas fa-scroll me-1"></i><span>Update Logs</span></a></li>
+                    <li class="nav-item mx-2"><a class="nav-link d-flex align-items-center" href="versioning.html"><i class="fas fa-code-branch me-1"></i><span>Versioning</span></a></li>
+                    <li class="nav-item mx-2"><a class="nav-link active d-flex align-items-center" href="settings.html"><i class="fas fa-cog me-1"></i><span>Settings</span></a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Page Content -->
+    <div class="container py-4 flex-shrink-0">
+        <h2 class="mb-4 text-center"><i class="fas fa-cog me-2 text-primary"></i> Settings</h2>
+
+        <!-- Warning about settings override -->
+        <div class="warning-box p-3 mb-4 rounded">
+            <div class="d-flex align-items-start">
+                <i class="fas fa-exclamation-triangle text-warning me-3 mt-1"></i>
+                <div>
+                    <strong class="text-warning">Important:</strong> Settings configured here are saved to <code>/data/db/settings.json</code> and will <strong>override</strong> any corresponding environment variables.
+                    To revert to environment variable values, click the "Reset" button for each setting, or use "Reset All" to clear all overrides.
+                    <br><br>
+                    <strong>Note:</strong> Settings are applied immediately after saving.
+                </div>
+            </div>
+        </div>
+
+        <!-- Settings Form -->
+        <form id="settingsForm">
+
+            <!-- Auto Update Settings Section -->
+            <div class="card setting-card mb-4">
+                <div class="card-header bg-dark border-secondary">
+                    <h5 class="mb-0"><i class="fas fa-sync-alt me-2"></i> Auto Update Settings</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label for="AutoUpdateDefaultMode" class="form-label fw-bold">Default Update Policy</label>
+                        <div class="setting-description mb-2">Determines the default behavior for stack updates when no specific policy is set in the compose file.</div>
+                        <select class="form-select" id="AutoUpdateDefaultMode" name="AutoUpdateDefaultMode" style="max-width: 500px;">
+                            <option value="AutoUpdate">AutoUpdate - Automatically pull and redeploy</option>
+                            <option value="NTFYOnly">NTFYOnly - Send notification only</option>
+                            <option value="DoNotUpdate">DoNotUpdate - Skip this stack</option>
+                        </select>
+                        <div class="setting-example mt-1"><i class="fas fa-lightbulb me-1"></i> Example: AutoUpdate</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="CRON_SCHEDULE" class="form-label fw-bold">CRON Schedule</label>
+                        <div class="setting-description mb-2">Schedule for automatic update checks using standard CRON syntax.</div>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-clock"></i></span>
+                            <input type="text" class="form-control" id="CRON_SCHEDULE" name="CRON_SCHEDULE" placeholder="*/5 * * * *">
+                            <button class="btn btn-outline-secondary" type="button" onclick="resetSetting('CRON_SCHEDULE')">Reset</button>
+                        </div>
+                        <div class="setting-example mt-1"><i class="fas fa-lightbulb me-1"></i> Examples: */5 * * * * (every 5 min), 0 2 * * * (daily at 2am)</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Portainer Settings Section -->
+            <div class="card setting-card mb-4">
+                <div class="card-header bg-dark border-secondary">
+                    <h5 class="mb-0"><i class="fas fa-server me-2"></i> Portainer Settings</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label for="PortainerBaseAddress" class="form-label fw-bold">Portainer Base Address</label>
+                        <div class="setting-description mb-2">The URL of your Portainer instance. Required for Portainer stack management.</div>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-link"></i></span>
+                            <input type="url" class="form-control" id="PortainerBaseAddress" name="PortainerBaseAddress" placeholder="https://portainer.yourdomain.com">
+                            <button class="btn btn-outline-secondary" type="button" onclick="resetSetting('PortainerBaseAddress')">Reset</button>
+                        </div>
+                        <div class="setting-example mt-1"><i class="fas fa-lightbulb me-1"></i> Example: https://portainer.example.com</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="PortainerAPIToken" class="form-label fw-bold">Portainer API Token</label>
+                        <div class="setting-description mb-2">Your Portainer API access token. Generate in Portainer under My Account &gt; Access Tokens.</div>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-key"></i></span>
+                            <input type="password" class="form-control" id="PortainerAPIToken" name="PortainerAPIToken" placeholder="ptr_...">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('PortainerAPIToken')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-secondary" type="button" onclick="resetSetting('PortainerAPIToken')">Reset</button>
+                        </div>
+                    </div>
+                    <!-- Test Portainer Button -->
+                    <div class="mt-3 pt-3 border-top border-secondary">
+                        <button type="button" class="btn btn-info btn-sm" onclick="testPortainer()" id="testPortainerBtn">
+                            <i class="fas fa-plug me-2"></i>Test Portainer Connection
+                        </button>
+                        <div class="setting-description mt-2">Verify your Portainer connection using current settings.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NTFY Settings Section -->
+            <div class="card setting-card mb-4">
+                <div class="card-header bg-dark border-secondary">
+                    <h5 class="mb-0"><i class="fas fa-bell me-2"></i> NTFY Notifications</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <label for="NTFYEnabled" class="form-label fw-bold">Enable NTFY Notifications</label>
+                        <div class="setting-description mb-2">Enable or disable push notifications via NTFY for stack updates.</div>
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="NTFYEnabled" name="NTFYEnabled">
+                            <label class="form-check-label" for="NTFYEnabled">Send notifications</label>
+                        </div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="NTFYTopicURL" class="form-label fw-bold">NTFY Topic URL</label>
+                        <div class="setting-description mb-2">The full URL of your NTFY topic.</div>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-broadcast-tower"></i></span>
+                            <input type="url" class="form-control" id="NTFYTopicURL" name="NTFYTopicURL" placeholder="https://ntfy.sh/my-topic">
+                            <button class="btn btn-outline-secondary" type="button" onclick="resetSetting('NTFYTopicURL')">Reset</button>
+                        </div>
+                        <div class="setting-example mt-1"><i class="fas fa-lightbulb me-1"></i> Examples: https://ntfy.sh/myserver</div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="NTFYToken" class="form-label fw-bold">NTFY Access Token (Optional)</label>
+                        <div class="setting-description mb-2">Authentication token for NTFY. Required only for private instances.</div>
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="fas fa-lock"></i></span>
+                            <input type="password" class="form-control" id="NTFYToken" name="NTFYToken" placeholder="Leave empty if not required">
+                            <button class="btn btn-outline-secondary" type="button" onclick="togglePassword('NTFYToken')"><i class="fas fa-eye"></i></button>
+                            <button class="btn btn-outline-secondary" type="button" onclick="resetSetting('NTFYToken')">Reset</button>
+                        </div>
+                    </div>
+                    <!-- Test NTFY Button -->
+                    <div class="mt-3 pt-3 border-top border-secondary">
+                        <button type="button" class="btn btn-info btn-sm" onclick="testNTFY()" id="testNTFYBtn">
+                            <i class="fas fa-paper-plane me-2"></i>Send Test Notification
+                        </button>
+                        <div class="setting-description mt-2">Send a test notification using current settings. Works regardless of enabled state.</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Spacer to ensure content clears the floating action bar -->
+            <div style="height: 80px;"></div>
+
+        </form>
+
+    </div>
+
+    <!-- Floating Action Bar (above footer) -->
+    <div class="floating-actions">
+        <div class="container">
+            <button type="button" class="btn btn-outline-danger" onclick="resetAllSettings()">
+                <i class="fas fa-undo me-2"></i>Reset All
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveSettings()">
+                <i class="fas fa-save me-2"></i>Save Settings
+            </button>
+        </div>
+    </div>
+
+    <!-- Sticky Footer -->
+    <footer class="app-footer">
+        <div class="container d-flex justify-content-between align-items-center">
+            <div class="text-muted small">
+                <i class="fas fa-ship me-1"></i>Whale Mate
+                <span class="ms-2" id="footerVersion">Loading...</span>
+            </div>
+            <div class="text-muted small">
+                Made with <i class="fas fa-heart text-danger"></i> by NopeNix &amp; Community
+                <a href="https://github.com/NopeNix/Whale-Mate" target="_blank" class="btn btn-sm btn-outline-secondary ms-3" title="GitHub Repository">
+                    <i class="fab fa-github"></i>
+                </a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        let envValues = {};
+
+        document.addEventListener("DOMContentLoaded", loadSettings);
+
+        async function loadSettings() {
+            try {
+                const envRes = await fetch("/api/settings/env");
+                if (envRes.ok) {
+                    const envData = await envRes.json();
+                    if (envData.success) envValues = envData.data;
+                }
+                const res = await fetch("/api/settings");
+                const data = await res.json();
+                if (!data.success) throw new Error(data.error);
+                const s = data.data;
+                document.getElementById("AutoUpdateDefaultMode").value = s.AutoUpdateDefaultMode || "AutoUpdate";
+                document.getElementById("CRON_SCHEDULE").value = s.CRON_SCHEDULE || "";
+                document.getElementById("PortainerBaseAddress").value = s.PortainerBaseAddress || "";
+                document.getElementById("PortainerAPIToken").value = s.PortainerAPIToken || "";
+                document.getElementById("NTFYTopicURL").value = s.NTFYTopicURL || "";
+                document.getElementById("NTFYToken").value = s.NTFYToken || "";
+                const hasEnvUrl = envValues.NTFYTopicURL && envValues.NTFYTopicURL.trim() !== "";
+                const savedVal = s.NTFYEnabled;
+                if (savedVal === true || savedVal === "true" || savedVal === "$true") {
+                    document.getElementById("NTFYEnabled").checked = true;
+                } else if (savedVal === false || savedVal === "false" || savedVal === "$false") {
+                    document.getElementById("NTFYEnabled").checked = false;
+                } else {
+                    document.getElementById("NTFYEnabled").checked = hasEnvUrl;
+                }
+            } catch (error) {
+                console.error("Error loading settings:", error);
+                alert("Failed to load settings: " + error.message);
+            }
+        }
+
+        async function saveSettings() {
+            const settings = {
+                AutoUpdateDefaultMode: document.getElementById("AutoUpdateDefaultMode").value,
+                CRON_SCHEDULE: document.getElementById("CRON_SCHEDULE").value,
+                PortainerBaseAddress: document.getElementById("PortainerBaseAddress").value,
+                PortainerAPIToken: document.getElementById("PortainerAPIToken").value,
+                NTFYEnabled: document.getElementById("NTFYEnabled").checked,
+                NTFYTopicURL: document.getElementById("NTFYTopicURL").value,
+                NTFYToken: document.getElementById("NTFYToken").value
+            };
+            try {
+                const res = await fetch("/api/settings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings) });
+                const data = await res.json();
+                if (data.success) alert("Settings saved successfully!");
+                else throw new Error(data.error || "Failed to save");
+            } catch (error) {
+                alert("Failed to save settings: " + error.message);
+            }
+        }
+
+        async function resetSetting(name) {
+            if (!confirm(`Reset ${name} to environment variable?`)) return;
+            try {
+                const res = await fetch("/api/settings/reset", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ setting: name }) });
+                const data = await res.json();
+                if (data.success) { await loadSettings(); alert(`${name} reset successfully`); }
+            } catch (error) { alert("Failed to reset: " + error.message); }
+        }
+
+        async function resetAllSettings() {
+            if (!confirm("Reset ALL settings to environment variables?")) return;
+            try {
+                const res = await fetch("/api/settings/reset-all", { method: "POST" });
+                const data = await res.json();
+                if (data.success) { await loadSettings(); alert("All settings reset"); }
+            } catch (error) { alert("Failed to reset: " + error.message); }
+        }
+
+        function togglePassword(id) {
+            const el = document.getElementById(id);
+            el.type = el.type === "password" ? "text" : "password";
+        }
+
+        async function testPortainer() {
+            const btn = document.getElementById("testPortainerBtn");
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Testing...';
+            
+            const testSettings = {
+                PortainerBaseAddress: document.getElementById("PortainerBaseAddress").value,
+                PortainerAPIToken: document.getElementById("PortainerAPIToken").value
+            };
+            
+            try {
+                const res = await fetch("/api/test-portainer", { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(testSettings)
+                });
+                const data = await res.json();
+                if (data.success) alert("Portainer connection successful! Found " + (data.data.stackCount || 0) + " stacks.");
+                else throw new Error(data.error);
+            } catch (error) {
+                alert("Portainer connection failed: " + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            }
+        }
+
+        async function testNTFY() {
+            const btn = document.getElementById("testNTFYBtn");
+            const orig = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Sending...';
+            
+            const testSettings = {
+                NTFYTopicURL: document.getElementById("NTFYTopicURL").value,
+                NTFYToken: document.getElementById("NTFYToken").value
+            };
+            
+            try {
+                const res = await fetch("/api/test-notification", { 
+                    method: "POST", 
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(testSettings)
+                });
+                const data = await res.json();
+                if (data.success) alert("Test notification sent! Check your NTFY topic.");
+                else throw new Error(data.error);
+            } catch (error) {
+                alert("Failed to send test notification: " + error.message);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            }
+        }
+    </script>
+
+    <script>
+        fetch('/api/version')
+            .then(r => r.json())
+            .then(data => {
+                let version = data.version;
+                if (!version || version === 'unknown' || version === '') version = 'dev';
+                document.getElementById('footerVersion').textContent = version;
+            })
+            .catch(() => {
+                document.getElementById('footerVersion').textContent = 'dev';
+            });
+    </script>
+
+</body>
+</html>

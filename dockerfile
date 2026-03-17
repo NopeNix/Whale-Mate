@@ -1,17 +1,33 @@
+# Build arguments for version info (must be before FROM)
+ARG GIT_REF=local
+ARG BUILD_DATE=dev
+ARG BUILD_VERSION=dev
+
 FROM mcr.microsoft.com/powershell:alpine-3.20
+
+# Create data directory first
+RUN mkdir -p /data
+
+# Set environment variables from build args (redeclare ARG after FROM is not needed when using ENV with ARG default)
+ARG BUILD_VERSION
+ARG BUILD_DATE
+ENV BUILD_VERSION=${BUILD_VERSION}
+ENV BUILD_DATE=${BUILD_DATE}
+
+# Write version info from build args
+RUN echo "$BUILD_VERSION" > /data/version.txt && echo "$BUILD_DATE" > /data/build_date.txt
 
 # Install necessary packages
 RUN apk update && \
-apk add --no-cache supervisor docker-cli bash curl jq docker-cli-compose
+    apk add --no-cache supervisor docker-cli bash curl jq docker-cli-compose
 RUN pwsh -c Install-Module Pode -Force
 
-
 # Install regctl via edge testing repo
-RUN sed -i 's/https:\/\/dl-cdn.alpinelinux.org\/alpine\/[^/]*\/main/https:\/\/dl-cdn.alpinelinux.org\/alpine\/edge\/main/g' /etc/apk/repositories
-RUN sed -i 's/https:\/\/dl-cdn.alpinelinux.org\/alpine\/[^/]*\/community/https:\/\/dl-cdn.alpinelinux.org\/alpine\/edge\/community/g' /etc/apk/repositories
+RUN sed -i 's/https:\/\/dl-cdn.alpinelinux.org\/alpine\/[^*]*\/main/https:\/\/dl-cdn.alpinelinux.org\/alpine\/edge\/main/g' /etc/apk/repositories
+RUN sed -i 's/https:\/\/dl-cdn.alpinelinux.org\/alpine\/[^*]*\/community/https:\/\/dl-cdn.alpinelinux.org\/alpine\/edge\/community/g' /etc/apk/repositories
 RUN echo 'https://dl-cdn.alpinelinux.org/alpine/edge/testing' | tee -a /etc/apk/repositories
 RUN apk update && \
-apk add --no-cache regclient
+    apk add --no-cache regclient
 
 # Create a working directory & copy the necessary files
 WORKDIR /data
@@ -25,7 +41,7 @@ RUN chmod +x /data/entrypoint.sh
 RUN chmod 555 /data/dockcheck.sh
 RUN chmod +x /data/dockcheck.sh
 
-# Make a folder for logging (optional but useful)
+# Make a folder for logging
 RUN mkdir -p /var/log
 
 # Configure Supervisord

@@ -2,16 +2,17 @@ services:
   whale-mate:
     image: nopenix/whale-mate:latest
     ports:
-      - 8080:8080 # Exposes HTTP 
+      - 8080:8080 # Exposes HTTP
     restart: unless-stopped
     volumes:
-      - /var/run/docker.sock:/var/run/docker.sock # only needed for docker copmpose
-      - /:/mnt/rootfs/:ro # only needed for docker compose and only if you want the update feature, otherwise only notifications
+      - /var/run/docker.sock:/var/run/docker.sock # only needed for docker compose
+      - /:/mnt/rootfs/:ro # only needed for docker compose and only if you want the update feature
+      - /versions:/data/versions # persist your stack backups (required for versioning/restore)
       - db:/data/db
     environment:
       # Auto Update Settings
       AutoUpdateDefaultMode: AutoUpdate # Can be: NTFYOnly, AutoUpdate, DoNotUpdate
-      CRON_SCHEDULE: "*/0 * * * *" # CRON String. Sets when the Programm is triggered
+      CRON_SCHEDULE: "*/5 * * * *" # CRON String. Sets when the Programm is triggered
       # Portainer Settings
       PortainerBaseAddress: https://portainer.yourdomain.com # just the base address of your portainer
       PortainerAPIToken:  # Portainer API Token goes here
@@ -22,3 +23,4 @@ services:
 
 volumes:
   db:
+  versions:

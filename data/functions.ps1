@@ -54,7 +54,7 @@ function Update-PortainerStack {
             "Content-Type" = "application/json"
         }
         
-        $Uri = ($env:PortainerBaseAddress + "/api/stacks/" + $stack.id + "?endpointId=" + $Stack.EndpointId)
+        $Uri = ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $stack.id + "?endpointId=" + $Stack.EndpointId)
         
         Invoke-RestMethod $Uri `
             -Method Put `
@@ -64,7 +64,7 @@ function Update-PortainerStack {
             -ErrorAction Stop | Out-Null
     }
     catch {
-        Write-Error ("Update not possible: " + ($env:PortainerBaseAddress + "/api/stacks/" + $stack.id + "?endpointId=" + $Stack.EndpointId) + " " + $_)
+        Write-Error ("Update not possible: " + ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $stack.id + "?endpointId=" + $Stack.EndpointId) + " " + $_)
     }
 }
 
@@ -89,22 +89,34 @@ function Update-DockerComposeStack {
 }
 
 function Get-PortainerStacks {
-    $Stacks = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress + "/api/stacks") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
+    # Get effective settings to ensure we have the correct default mode
+    $effectiveSettings = Get-WhaleMateSettings
+    $defaultUpdatePolicy = $effectiveSettings['AutoUpdateDefaultMode']
+    
+    $Stacks = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
     $Stacks = $Stacks | ForEach-Object {
-        $StackFileContent = (Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress + "/api/stacks/" + $_.id + "/file") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method get -ErrorAction stop -ContentType "application/json").StackFileContent
+        $StackFileContent = (Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $_.id + "/file") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method get -ErrorAction stop -ContentType "application/json").StackFileContent
         $_ | Add-Member -NotePropertyName "StackFileContent" -NotePropertyValue $StackFileContent -Force
             
-        if ($StackFileContent -imatch "#UpdatePolicy=AutoUpdate") {
-            $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "AutoUpdate" -Force
-        }
-        elseif ($StackFileContent -imatch "#UpdatePolicy=DoNotUpdate") {
+        # Check for UpdatePolicy in comments - support various formats with flexible whitespace
+        # Patterns: #UpdatePolicy=AutoUpdate, # UpdatePolicy=AutoUpdate, etc.
+        # Use multiline mode (?m) and check each line individually
+        $hasDoNotUpdate = $StackFileContent -match '(?m)^\s*#\s*UpdatePolicy\s*=\s*DoNotUpdate\s*(?:#.*)?$'
+        $hasNTFYOnly = $StackFileContent -match '(?m)^\s*#\s*UpdatePolicy\s*=\s*NTFYOnly\s*(?:#.*)?$'
+        $hasAutoUpdate = $StackFileContent -match '(?m)^\s*#\s*UpdatePolicy\s*=\s*AutoUpdate\s*(?:#.*)?$'
+        
+        # Priority: DoNotUpdate > NTFYOnly > AutoUpdate > default
+        if ($hasDoNotUpdate) {
             $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "DoNotUpdate" -Force
         }
-        elseif ($StackFileContent -imatch "#UpdatePolicy=NTFYOnly") {
+        elseif ($hasNTFYOnly) {
             $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "NTFYOnly" -Force
         }
+        elseif ($hasAutoUpdate) {
+            $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "AutoUpdate" -Force
+        }
         else {
-            $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue $env:AutoUpdateDefaultMode -Force
+            $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue $defaultUpdatePolicy -Force
         }
     
         $_
@@ -114,27 +126,40 @@ function Get-PortainerStacks {
 }
 
 function Get-DockerComposeStacks {
+    # Get effective settings to ensure we have the correct default mode
+    $effectiveSettings = Get-WhaleMateSettings
+    $defaultUpdatePolicy = $effectiveSettings['AutoUpdateDefaultMode']
+    
     $Stacks = (docker compose ls --format json | convertfrom-json)
     $Stacks = $Stacks | ForEach-Object {
         if ((Test-Path "/mnt/rootfs/")) {
             try {
                 $ComposeFile = (Get-Content ("/mnt/rootfs/" + $_.ConfigFiles) -ErrorAction Stop -Raw)
 
-                if ($ComposeFile -imatch "#UpdatePolicy=AutoUpdate") {
-                    $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "AutoUpdate" -Force
-                }
-                elseif ($ComposeFile -imatch "#UpdatePolicy=DoNotUpdate") {
+                # Check for UpdatePolicy in comments - support various formats with flexible whitespace
+                # Patterns: #UpdatePolicy=AutoUpdate, # UpdatePolicy=AutoUpdate, etc.
+                # Use multiline mode (?m) and check each line individually
+                $hasDoNotUpdate = $ComposeFile -match '(?m)^\s*#\s*UpdatePolicy\s*=\s*DoNotUpdate\s*(?:#.*)?$'
+                $hasNTFYOnly = $ComposeFile -match '(?m)^\s*#\s*UpdatePolicy\s*=\s*NTFYOnly\s*(?:#.*)?$'
+                $hasAutoUpdate = $ComposeFile -match '(?m)^\s*#\s*UpdatePolicy\s*=\s*AutoUpdate\s*(?:#.*)?$'
+                
+                # Priority: DoNotUpdate > NTFYOnly > AutoUpdate > default
+                if ($hasDoNotUpdate) {
                     $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "DoNotUpdate" -Force
                 }
-                elseif ($ComposeFile -imatch "#UpdatePolicy=NTFYOnly") {
+                elseif ($hasNTFYOnly) {
                     $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "NTFYOnly" -Force
                 }
+                elseif ($hasAutoUpdate) {
+                    $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue "AutoUpdate" -Force
+                }
                 else {
-                    $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue $env:AutoUpdateDefaultMode -Force
+                    $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue $defaultUpdatePolicy -Force
                 }
             }
             catch {
-                Write-Host ("Error: unaböe tp read stack file '" + $_.ConfigFiles + "' because " + $_.Exception.Message)
+                Write-Host ("Error: unable to read stack file '" + $_.ConfigFiles + "' because " + $_.Exception.Message)
+                $_ | Add-Member -NotePropertyName "UpdatePolicy" -NotePropertyValue $defaultUpdatePolicy -Force
             }
         }
         else {
@@ -161,10 +186,10 @@ function Get-PortainerStacksUpdateStatus {
 
     switch ($PSCmdlet.ParameterSetName) {
         'Stack' {
-            $Status = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress + "/api/stacks/" + $Stack.Id + "/images_status?refresh=1") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
+            $Status = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $Stack.Id + "/images_status?refresh=1") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
         }
         'StackID' {
-            $Status = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress + "/api/stacks/" + $StackID + "/images_status?refresh=1") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
+            $Status = Invoke-RestMethod -SkipCertificateCheck ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $StackID + "/images_status?refresh=1") -AllowUnencryptedAuthentication -Body @{"X-API-KEY" = $env:PortainerAPIToken } -Method Get -ErrorAction Stop
         }
         default {
             Write-Error 'No valid parameter provided. Must specify either -Stack or -ID.'
@@ -329,4 +354,194 @@ function Get-EscapedJsonString {
 
         $escaped
     }
+}
+
+# ============================================
+# Versioning Functions
+# ============================================
+
+function Get-StackVersionHistory {
+    <#
+    .SYNOPSIS
+        Gets version history for a specific stack.
+    .PARAMETER StackId
+        The Portainer stack ID.
+    .OUTPUTS
+        Array of version objects with timestamp and file path.
+    #>
+    param (
+        [Parameter(Mandatory = $true)]
+        [int]$StackId
+    )
+
+    $versionsDir = "/data/versions"
+    $stackVersionsDir = Join-Path $versionsDir $StackId
+
+    if (-not (Test-Path $stackVersionsDir)) {
+        return @()
+    }
+
+    # Get all version files, sorted by modification time (newest first)
+    $versionFiles = Get-ChildItem -Path $stackVersionsDir -Filter "*.yml" -ErrorAction SilentlyContinue | 
+                    Sort-Object LastWriteTime -Descending
+
+    $versions = [System.Collections.ArrayList]::new()
+    foreach ($file in $versionFiles) {
+        [void]$versions.Add(@{
+            timestamp = $file.LastWriteTime.ToString("o")
+            file      = $file.FullName
+            size      = $file.Length
+        })
+    }
+
+    # Ensure we always return an array (even if empty)
+    return @($versions)
+}
+
+function Backup-PortainerStack {
+    <#
+    .SYNOPSIS
+        Creates a backup of a Portainer stack's compose file.
+    .PARAMETER StackId
+        The Portainer stack ID.
+    #>
+    param (
+        [Parameter(Mandatory = $true)]
+        [int]$StackId
+    )
+
+    $versionsDir = "/data/versions"
+    $stackVersionsDir = Join-Path $versionsDir $StackId
+
+    # Create versions directory if it doesn't exist
+    if (-not (Test-Path $versionsDir)) {
+        New-Item -Path $versionsDir -ItemType Directory -Force | Out-Null
+    }
+
+    if (-not (Test-Path $stackVersionsDir)) {
+        New-Item -Path $stackVersionsDir -ItemType Directory -Force | Out-Null
+    }
+
+    # Get the stack from Portainer
+    try {
+        $Headers = @{
+            "X-API-KEY" = $env:PortainerAPIToken
+        }
+        
+        $stack = Invoke-RestMethod -SkipCertificateCheck `
+            -Uri ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $StackId) `
+            -Headers $Headers `
+            -Method Get `
+            -ErrorAction Stop
+            
+        # Get the stack file content
+        $stackFile = Invoke-RestMethod -SkipCertificateCheck `
+            -Uri ($env:PortainerBaseAddress.TrimEnd("/") + "/api/stacks/" + $StackId + "/file") `
+            -Headers $Headers `
+            -Method Get `
+            -ErrorAction Stop
+            
+        $stackFileContent = $stackFile.StackFileContent
+        
+        # Create backup filename with timestamp
+        $timestamp = Get-Date -Format "yyyy-MM-dd_HH-mm-ss"
+        $safeStackName = $stack.Name -replace '[^\w\-]', '_'
+        $backupFileName = "${safeStackName}_${timestamp}.yml"
+        $backupFilePath = Join-Path $stackVersionsDir $backupFileName
+        
+        # Save the backup
+        $stackFileContent | Out-File -FilePath $backupFilePath -Encoding UTF8 -Force
+        
+        Write-Output "Backup created: $backupFilePath"
+    }
+    catch {
+        Write-Error ("Failed to backup stack: " + $_.Exception.Message)
+        throw
+    }
+}
+# ============================================
+# Settings Management Functions
+# ============================================
+
+$script:SettingsFilePath = "/data/db/settings.json"
+
+function Get-WhaleMateSettings {
+    $settings = @{}
+    $savedSettings = @{}
+    if (Test-Path $script:SettingsFilePath) {
+        try {
+            $content = Get-Content -Path $script:SettingsFilePath -Raw -ErrorAction SilentlyContinue
+            if ($content) { $savedSettings = ($content | ConvertFrom-Json) }
+        } catch { Write-Host "[Settings] Warning: Could not load settings file: $_" }
+    }
+    function Get-EffectiveSetting($name, $envValue, $defaultValue = $null) {
+        if ($savedSettings.PSObject.Properties.Name -contains $name) {
+            $savedValue = $savedSettings.$name
+            if ($savedValue -ne $null -and $savedValue -ne "") { return $savedValue }
+        }
+        if ($envValue -ne $null -and $envValue -ne "") { return $envValue }
+        return $defaultValue
+    }
+    $settings['AutoUpdateDefaultMode'] = Get-EffectiveSetting 'AutoUpdateDefaultMode' $env:AutoUpdateDefaultMode 'AutoUpdate'
+    $settings['CRON_SCHEDULE'] = Get-EffectiveSetting 'CRON_SCHEDULE' $env:CRON_SCHEDULE '*/5 * * * *'
+    $settings['PortainerBaseAddress'] = Get-EffectiveSetting 'PortainerBaseAddress' $env:PortainerBaseAddress ''
+    $settings['PortainerAPIToken'] = Get-EffectiveSetting 'PortainerAPIToken' $env:PortainerAPIToken ''
+    $settings['NTFYEnabled'] = Get-EffectiveSetting 'NTFYEnabled' $env:NTFYEnabled '$false'
+    $settings['NTFYTopicURL'] = Get-EffectiveSetting 'NTFYTopicURL' $env:NTFYTopicURL ''
+    $settings['NTFYToken'] = Get-EffectiveSetting 'NTFYToken' $env:NTFYToken ''
+    return $settings
+}
+
+function Save-WhaleMateSettings {
+    param ([Parameter(Mandatory = $true)][hashtable]$Settings)
+    $settingsDir = Split-Path -Parent $script:SettingsFilePath
+    if (-not (Test-Path $settingsDir)) { New-Item -Path $settingsDir -ItemType Directory -Force | Out-Null }
+    $cleanSettings = @{}
+    foreach ($key in $Settings.Keys) { $cleanSettings[$key] = [string]$Settings[$key] }
+    $json = $cleanSettings | ConvertTo-Json -Depth 10
+    $json | Out-File -FilePath $script:SettingsFilePath -Encoding UTF8 -Force
+    Write-Host "[Settings] Settings saved to $script:SettingsFilePath"
+}
+
+function Reset-WhaleMateSetting {
+    param ([Parameter(Mandatory = $true)][string]$SettingName)
+    if (-not (Test-Path $script:SettingsFilePath)) { return }
+    try {
+        $content = Get-Content -Path $script:SettingsFilePath -Raw -ErrorAction SilentlyContinue
+        if (-not $content) { return }
+        $settings = ($content | ConvertFrom-Json)
+        if ($settings.PSObject.Properties.Name -contains $SettingName) { $settings.PSObject.Properties.Remove($SettingName) }
+        if ($settings.PSObject.Properties.Count -eq 0) { Remove-Item -Path $script:SettingsFilePath -Force }
+        else {
+            $json = $settings | ConvertTo-Json -Depth 10
+            $json | Out-File -FilePath $script:SettingsFilePath -Encoding UTF8 -Force
+        }
+        Write-Host "[Settings] Setting '$SettingName' reset to environment variable"
+    } catch { Write-Error "[Settings] Failed to reset setting: $_"; throw }
+}
+
+function Reset-AllWhaleMateSettings {
+    if (Test-Path $script:SettingsFilePath) {
+        Remove-Item -Path $script:SettingsFilePath -Force
+        Write-Host "[Settings] All settings reset to environment variables"
+    }
+}
+
+function Test-NTFYConfiguration {
+    $settings = Get-WhaleMateSettings
+    $ntfyEnabled = $settings['NTFYEnabled']
+    if ($ntfyEnabled -ne '$true' -and $ntfyEnabled -ne $true -and $ntfyEnabled -ne 'true') {
+        throw "NTFY is not enabled."
+    }
+    if ([string]::IsNullOrWhiteSpace($settings['NTFYTopicURL'])) { throw "NTFY Topic URL is not configured." }
+    $message = "🐳 Whale Mate Test - Your notification configuration is working!"
+    try {
+        $headers = @{}
+        if (-not [string]::IsNullOrWhiteSpace($settings['NTFYToken'])) { $headers['Authorization'] = "Bearer $($settings['NTFYToken'])" }
+        $params = @{ Uri = $settings['NTFYTopicURL']; Method = 'POST'; Body = $message; ErrorAction = 'Stop' }
+        if ($headers.Count -gt 0) { $params['Headers'] = $headers }
+        Invoke-WebRequest @params | Out-Null
+        Write-Host "[Settings] Test notification sent successfully"
+        return $true
+    } catch { Write-Error "[Settings] Failed to send test notification: $_"; throw }
 }
