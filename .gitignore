@@ -8,3 +8,4 @@ data/db/**
 tmp
 stack-backups
 stack-hashes.json
+.continue
