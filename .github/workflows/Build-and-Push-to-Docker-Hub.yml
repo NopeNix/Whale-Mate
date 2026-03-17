@@ -17,6 +17,7 @@ jobs:
     outputs:
       version: ${{ steps.version.outputs.version }}
       floating: ${{ steps.version.outputs.floating }}
+      build_date: ${{ steps.version.outputs.build_date }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -51,6 +52,7 @@ jobs:
           
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "floating=${FLOATING}" >> $GITHUB_OUTPUT
+          echo "build_date=${DATE}" >> $GITHUB_OUTPUT
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -64,7 +66,7 @@ jobs:
       - name: Set build args
         run: |
           echo "BUILD_VERSION=${{ steps.version.outputs.version }}" >> $GITHUB_ENV
-          echo "BUILD_DATE=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+          echo "BUILD_DATE=${{ steps.version.outputs.build_date }}" >> $GITHUB_ENV
           echo "Build version: ${{ steps.version.outputs.version }}"
 
       - name: Build and push
@@ -75,3 +77,6 @@ jobs:
           tags: |
             nopenix/whale-mate:${{ steps.version.outputs.floating }}
             nopenix/whale-mate:${{ steps.version.outputs.version }}
+          build-args: |
+            BUILD_VERSION=${{ steps.version.outputs.version }}
+            BUILD_DATE=${{ steps.version.outputs.build_date }}
