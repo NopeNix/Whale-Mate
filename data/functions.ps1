@@ -434,3 +434,89 @@ function Backup-PortainerStack {
         throw
     }
 }
+# ============================================
+# Settings Management Functions
+# ============================================
+
+$script:SettingsFilePath = "/data/db/settings.json"
+
+function Get-WhaleMateSettings {
+    $settings = @{}
+    $savedSettings = @{}
+    if (Test-Path $script:SettingsFilePath) {
+        try {
+            $content = Get-Content -Path $script:SettingsFilePath -Raw -ErrorAction SilentlyContinue
+            if ($content) { $savedSettings = ($content | ConvertFrom-Json) }
+        } catch { Write-Host "[Settings] Warning: Could not load settings file: $_" }
+    }
+    function Get-EffectiveSetting($name, $envValue, $defaultValue = $null) {
+        if ($savedSettings.PSObject.Properties.Name -contains $name) {
+            $savedValue = $savedSettings.$name
+            if ($savedValue -ne $null -and $savedValue -ne "") { return $savedValue }
+        }
+        if ($envValue -ne $null -and $envValue -ne "") { return $envValue }
+        return $defaultValue
+    }
+    $settings['AutoUpdateDefaultMode'] = Get-EffectiveSetting 'AutoUpdateDefaultMode' $env:AutoUpdateDefaultMode 'AutoUpdate'
+    $settings['CRON_SCHEDULE'] = Get-EffectiveSetting 'CRON_SCHEDULE' $env:CRON_SCHEDULE '*/5 * * * *'
+    $settings['PortainerBaseAddress'] = Get-EffectiveSetting 'PortainerBaseAddress' $env:PortainerBaseAddress ''
+    $settings['PortainerAPIToken'] = Get-EffectiveSetting 'PortainerAPIToken' $env:PortainerAPIToken ''
+    $settings['NTFYEnabled'] = Get-EffectiveSetting 'NTFYEnabled' $env:NTFYEnabled '$false'
+    $settings['NTFYTopicURL'] = Get-EffectiveSetting 'NTFYTopicURL' $env:NTFYTopicURL ''
+    $settings['NTFYToken'] = Get-EffectiveSetting 'NTFYToken' $env:NTFYToken ''
+    return $settings
+}
+
+function Save-WhaleMateSettings {
+    param ([Parameter(Mandatory = $true)][hashtable]$Settings)
+    $settingsDir = Split-Path -Parent $script:SettingsFilePath
+    if (-not (Test-Path $settingsDir)) { New-Item -Path $settingsDir -ItemType Directory -Force | Out-Null }
+    $cleanSettings = @{}
+    foreach ($key in $Settings.Keys) { $cleanSettings[$key] = [string]$Settings[$key] }
+    $json = $cleanSettings | ConvertTo-Json -Depth 10
+    $json | Out-File -FilePath $script:SettingsFilePath -Encoding UTF8 -Force
+    Write-Host "[Settings] Settings saved to $script:SettingsFilePath"
+}
+
+function Reset-WhaleMateSetting {
+    param ([Parameter(Mandatory = $true)][string]$SettingName)
+    if (-not (Test-Path $script:SettingsFilePath)) { return }
+    try {
+        $content = Get-Content -Path $script:SettingsFilePath -Raw -ErrorAction SilentlyContinue
+        if (-not $content) { return }
+        $settings = ($content | ConvertFrom-Json)
+        if ($settings.PSObject.Properties.Name -contains $SettingName) { $settings.PSObject.Properties.Remove($SettingName) }
+        if ($settings.PSObject.Properties.Count -eq 0) { Remove-Item -Path $script:SettingsFilePath -Force }
+        else {
+            $json = $settings | ConvertTo-Json -Depth 10
+            $json | Out-File -FilePath $script:SettingsFilePath -Encoding UTF8 -Force
+        }
+        Write-Host "[Settings] Setting '$SettingName' reset to environment variable"
+    } catch { Write-Error "[Settings] Failed to reset setting: $_"; throw }
+}
+
+function Reset-AllWhaleMateSettings {
+    if (Test-Path $script:SettingsFilePath) {
+        Remove-Item -Path $script:SettingsFilePath -Force
+        Write-Host "[Settings] All settings reset to environment variables"
+    }
+}
+
+function Test-NTFYConfiguration {
+    $settings = Get-WhaleMateSettings
+    $ntfyEnabled = $settings['NTFYEnabled']
+    if ($ntfyEnabled -ne '$true' -and $ntfyEnabled -ne $true -and $ntfyEnabled -ne 'true') {
+        throw "NTFY is not enabled."
+    }
+    if ([string]::IsNullOrWhiteSpace($settings['NTFYTopicURL'])) { throw "NTFY Topic URL is not configured." }
+    $message = "🐳 Whale Mate Test - Your notification configuration is working!"
+    try {
+        $headers = @{}
+        if (-not [string]::IsNullOrWhiteSpace($settings['NTFYToken'])) { $headers['Authorization'] = "Bearer $($settings['NTFYToken'])" }
+        $params = @{ Uri = $settings['NTFYTopicURL']; Method = 'POST'; Body = $message; ErrorAction = 'Stop' }
+        if ($headers.Count -gt 0) { $params['Headers'] = $headers }
+        Invoke-WebRequest @params | Out-Null
+        Write-Host "[Settings] Test notification sent successfully"
+        return $true
+    } catch { Write-Error "[Settings] Failed to send test notification: $_"; throw }
+}

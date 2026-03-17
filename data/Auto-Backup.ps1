@@ -5,7 +5,17 @@
 $OutputEncoding = [System.Text.Encoding]::UTF8
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-Write-Host "[Auto-Backup] Script started"
+# Load settings
+. ($PSScriptRoot + "/functions.ps1")
+$settings = Get-WhaleMateSettings
+
+# Apply loaded settings to env vars for backward compatibility
+# Always trim trailing "/" from PortainerBaseAddress to ensure consistent URLs
+$env:PortainerBaseAddress = if ($settings['PortainerBaseAddress']) { $settings['PortainerBaseAddress'].TrimEnd("/") } else { "" }
+$env:PortainerAPIToken = $settings['PortainerAPIToken']
+$env:NTFYEnabled = $settings['NTFYEnabled']
+
+Write-Host "[Auto-Backup] Script started with settings: NTFYEnabled=$($settings['NTFYEnabled']), PortainerBaseAddress=$($env:PortainerBaseAddress)"
 
 $versionsDir = "/data/versions"
 $hashDbFile = "/data/db/stack-hashes.json"
@@ -67,8 +77,8 @@ function Get-ContentHash {
 
 # Get stack hashes from Portainer
 function Get-PortainerStackHashes {
-    if (-not $env:PortainerBaseAddress.TrimEnd("/") -or -not $env:PortainerAPIToken) {
-        Write-Host "[Auto-Backup] Skipping - no Portainer credentials"
+    if ([string]::IsNullOrWhiteSpace($env:PortainerBaseAddress) -or [string]::IsNullOrWhiteSpace($env:PortainerAPIToken)) {
+        Write-Host "[Auto-Backup] Skipping - no Portainer credentials configured"
         return @{}
     }
 

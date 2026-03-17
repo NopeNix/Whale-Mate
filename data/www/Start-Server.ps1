@@ -622,4 +622,121 @@ Start-PodeServer -Verbose {
             } -StatusCode 500
         }
     }
+
+    # ============================================
+    # Settings API Endpoints
+    # ============================================
+
+    # Serve the settings HTML page
+    Add-PodeRoute -Method Get -Path "/settings.html" -ScriptBlock {
+        Write-PodeHtmlResponse (Get-Content ($PSScriptRoot + "/html/settings.html") -Raw)
+    }
+
+    # Get current settings (merged: saved > env > default)
+    Add-PodeRoute -Method Get -Path "/api/settings" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+        try {
+            $settings = Get-WhaleMateSettings
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = $settings
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
+
+    # Save settings (overrides environment variables)
+    Add-PodeRoute -Method Post -Path "/api/settings" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+        try {
+            # Convert WebEvent.Data to hashtable
+            $settingsToSave = @{}
+            foreach ($key in $WebEvent.Data.Keys) {
+                $settingsToSave[$key] = $WebEvent.Data[$key]
+            }
+
+            Save-WhaleMateSettings -Settings $settingsToSave
+
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = @{ message = "Settings saved successfully" }
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
+
+    # Reset a single setting to environment variable
+    Add-PodeRoute -Method Post -Path "/api/settings/reset" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+        try {
+            $settingName = $WebEvent.Data.setting
+            if (-not $settingName) {
+                Write-PodeJsonResponse -Value @{
+                    success = $false
+                    error   = "Setting name is required"
+                } -StatusCode 400
+                return
+            }
+
+            Reset-WhaleMateSetting -SettingName $settingName
+
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = @{ message = "Setting reset successfully" }
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
+
+    # Reset all settings to environment variables
+    Add-PodeRoute -Method Post -Path "/api/settings/reset-all" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+        try {
+            Reset-AllWhaleMateSettings
+
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = @{ message = "All settings reset to environment variables" }
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
+
+    # Test NTFY configuration
+    Add-PodeRoute -Method Post -Path "/api/test-notification" -ScriptBlock {
+        . ($PSScriptRoot + "/../functions.ps1")
+        try {
+            Test-NTFYConfiguration
+            Write-PodeJsonResponse -Value @{
+                success = $true
+                data    = @{ message = "Test notification sent successfully" }
+            }
+        }
+        catch {
+            Write-PodeJsonResponse -Value @{
+                success = $false
+                error   = $_.Exception.Message
+            } -StatusCode 500
+        }
+    }
 }

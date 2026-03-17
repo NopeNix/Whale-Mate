@@ -1,15 +1,28 @@
 . ($PSScriptRoot + "/functions.ps1")
 
-# Prep
-if ($null -ne $env:PortainerBaseAddress.TrimEnd("/") -or $env:PortainerBaseAddress.TrimEnd("/") -eq "") {
-    $env:PortainerBaseAddress.TrimEnd("/") = $env:PortainerBaseAddress.TrimEnd("/")
-}
+# Load settings (saved settings override environment variables)
+$settings = Get-WhaleMateSettings
 
-# Portainer Updates
-if ($null -ne $env:PortainerBaseAddress.TrimEnd("/") -and $env:PortainerBaseAddress.TrimEnd("/").Trim(" ") -ne "") {
-    # Sanatize Vars
-    $env:PortainerBaseAddress.TrimEnd("/") = $env:PortainerBaseAddress.TrimEnd("/")
-    $PortainerBaseDomain = ([System.Uri]::new($env:PortainerBaseAddress.TrimEnd("/"))).Host
+# Apply loaded settings to environment variables for backward compatibility
+# Always trim trailing "/" from PortainerBaseAddress to ensure consistent URLs
+$env:AutoUpdateDefaultMode = $settings['AutoUpdateDefaultMode']
+$env:CRON_SCHEDULE = $settings['CRON_SCHEDULE']
+$env:PortainerBaseAddress = if ($settings['PortainerBaseAddress']) { $settings['PortainerBaseAddress'].TrimEnd("/") } else { "" }
+$env:PortainerAPIToken = $settings['PortainerAPIToken']
+$env:NTFYEnabled = $settings['NTFYEnabled']
+$env:NTFYTopicURL = $settings['NTFYTopicURL']
+$env:NTFYToken = $settings['NTFYToken']
+
+Write-Host "[Update-Stacks] Loaded settings: AutoUpdateDefaultMode=$($settings['AutoUpdateDefaultMode']), CRON=$($settings['CRON_SCHEDULE']), NTFYEnabled=$($settings['NTFYEnabled']), PortainerBaseAddress=$($env:PortainerBaseAddress)" -ForegroundColor Cyan
+
+# Portainer Updates - only proceed if PortainerBaseAddress is configured
+if (-not [string]::IsNullOrWhiteSpace($env:PortainerBaseAddress)) {
+    # Extract domain for display
+    try {
+        $PortainerBaseDomain = ([System.Uri]::new($env:PortainerBaseAddress)).Host
+    } catch {
+        $PortainerBaseDomain = $env:PortainerBaseAddress
+    }
 
     # Get All Stacks
     Write-Host -Message ("Getting all Portainer Stacks...") -ForegroundColor Blue
@@ -22,7 +35,7 @@ if ($null -ne $env:PortainerBaseAddress.TrimEnd("/") -and $env:PortainerBaseAddr
         Exit 1
     }
 
-    # Get All Stack Status and strigger according action
+    # Get All Stack Status and trigger according action
     Write-Host -Message ("Looking for outdated Portainer Stacks on '$PortainerBaseDomain'`n (Default update Policy is '$env:AutoUpdateDefaultMode')") -ForegroundColor Blue
 
     $NotifiedStacks = Get-NotifiedStacks
@@ -126,7 +139,7 @@ if ($true) {
         Exit 1
     }
 
-    # Get All Stack Status and strigger according action
+    # Get All Stack Status and trigger according action
     Write-Host -Message ("Looking for outdated Docker Compose Stacks on '/var/run/docker.sock'`n (Default update Policy is '$env:AutoUpdateDefaultMode')") -ForegroundColor Blue
 
     $NotifiedStacks = Get-NotifiedStacks
