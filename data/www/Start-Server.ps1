@@ -662,9 +662,35 @@ Start-PodeServer -Verbose {
 
             Save-WhaleMateSettings -Settings $settingsToSave
 
+            # Apply settings immediately to the current process environment variables
+            # This ensures the web server and other components use the new settings right away
+            if ($settingsToSave.ContainsKey('AutoUpdateDefaultMode')) {
+                $env:AutoUpdateDefaultMode = $settingsToSave['AutoUpdateDefaultMode']
+            }
+            if ($settingsToSave.ContainsKey('CRON_SCHEDULE')) {
+                $env:CRON_SCHEDULE = $settingsToSave['CRON_SCHEDULE']
+            }
+            if ($settingsToSave.ContainsKey('PortainerBaseAddress')) {
+                $env:PortainerBaseAddress = if ($settingsToSave['PortainerBaseAddress']) { $settingsToSave['PortainerBaseAddress'].TrimEnd("/") } else { "" }
+            }
+            if ($settingsToSave.ContainsKey('PortainerAPIToken')) {
+                $env:PortainerAPIToken = $settingsToSave['PortainerAPIToken']
+            }
+            if ($settingsToSave.ContainsKey('NTFYEnabled')) {
+                $env:NTFYEnabled = if ($settingsToSave['NTFYEnabled'] -eq $true -or $settingsToSave['NTFYEnabled'] -eq "true") { "$true" } else { "$false" }
+            }
+            if ($settingsToSave.ContainsKey('NTFYTopicURL')) {
+                $env:NTFYTopicURL = $settingsToSave['NTFYTopicURL']
+            }
+            if ($settingsToSave.ContainsKey('NTFYToken')) {
+                $env:NTFYToken = $settingsToSave['NTFYToken']
+            }
+
+            Write-Host "[Settings] Settings saved and applied immediately"
+
             Write-PodeJsonResponse -Value @{
                 success = $true
-                data    = @{ message = "Settings saved successfully" }
+                data    = @{ message = "Settings saved and applied successfully" }
             }
         }
         catch {
@@ -690,6 +716,20 @@ Start-PodeServer -Verbose {
 
             Reset-WhaleMateSetting -SettingName $settingName
 
+            # Re-load settings to get the effective value (from env or default) and apply it
+            $effectiveSettings = Get-WhaleMateSettings
+            switch ($settingName) {
+                'AutoUpdateDefaultMode' { $env:AutoUpdateDefaultMode = $effectiveSettings[$settingName] }
+                'CRON_SCHEDULE' { $env:CRON_SCHEDULE = $effectiveSettings[$settingName] }
+                'PortainerBaseAddress' { $env:PortainerBaseAddress = if ($effectiveSettings[$settingName]) { $effectiveSettings[$settingName].TrimEnd("/") } else { "" } }
+                'PortainerAPIToken' { $env:PortainerAPIToken = $effectiveSettings[$settingName] }
+                'NTFYEnabled' { $env:NTFYEnabled = $effectiveSettings[$settingName] }
+                'NTFYTopicURL' { $env:NTFYTopicURL = $effectiveSettings[$settingName] }
+                'NTFYToken' { $env:NTFYToken = $effectiveSettings[$settingName] }
+            }
+
+            Write-Host "[Settings] Setting '$settingName' reset and applied immediately"
+
             Write-PodeJsonResponse -Value @{
                 success = $true
                 data    = @{ message = "Setting reset successfully" }
@@ -708,6 +748,18 @@ Start-PodeServer -Verbose {
         . ($PSScriptRoot + "/../functions.ps1")
         try {
             Reset-AllWhaleMateSettings
+
+            # Re-load all settings to get the effective values (from env or defaults) and apply them
+            $effectiveSettings = Get-WhaleMateSettings
+            $env:AutoUpdateDefaultMode = $effectiveSettings['AutoUpdateDefaultMode']
+            $env:CRON_SCHEDULE = $effectiveSettings['CRON_SCHEDULE']
+            $env:PortainerBaseAddress = if ($effectiveSettings['PortainerBaseAddress']) { $effectiveSettings['PortainerBaseAddress'].TrimEnd("/") } else { "" }
+            $env:PortainerAPIToken = $effectiveSettings['PortainerAPIToken']
+            $env:NTFYEnabled = $effectiveSettings['NTFYEnabled']
+            $env:NTFYTopicURL = $effectiveSettings['NTFYTopicURL']
+            $env:NTFYToken = $effectiveSettings['NTFYToken']
+
+            Write-Host "[Settings] All settings reset and applied immediately"
 
             Write-PodeJsonResponse -Value @{
                 success = $true

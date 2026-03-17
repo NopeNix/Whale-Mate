@@ -60,6 +60,35 @@
             background-color: #0d6efd;
             border-color: #0d6efd;
         }
+        /* Floating action bar */
+        .floating-actions {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(33, 37, 41, 0.95);
+            border-top: 1px solid #2d2d2d;
+            padding: 1rem 0;
+            z-index: 1000;
+            backdrop-filter: blur(10px);
+        }
+        .floating-actions .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        body {
+            padding-bottom: 100px;
+        }
+        @media (max-width: 576px) {
+            .floating-actions .container {
+                flex-direction: column;
+                gap: 0.5rem;
+            }
+            .floating-actions .btn {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -118,7 +147,7 @@
                     <strong class="text-warning">Important:</strong> Settings configured here are saved to <code>/data/db/settings.json</code> and will <strong>override</strong> any corresponding environment variables.
                     To revert to environment variable values, click the "Reset" button for each setting, or use "Reset All" to clear all overrides.
                     <br><br>
-                    <strong>Note:</strong> Changes take effect on the next CRON run. For immediate effect, restart the container.
+                    <strong>Note:</strong> Settings are applied immediately after saving.
                 </div>
             </div>
         </div>
@@ -251,17 +280,19 @@
                 </div>
             </div>
 
-            <!-- Save/Reset Buttons -->
-            <div class="d-flex justify-content-between mb-4">
+        </form>
+
+        <!-- Floating Action Bar -->
+        <div class="floating-actions">
+            <div class="container">
                 <button type="button" class="btn btn-outline-danger" onclick="resetAllSettings()">
                     <i class="fas fa-undo me-2"></i>Reset All to Environment Variables
                 </button>
-                <button type="submit" class="btn btn-primary btn-lg">
+                <button type="button" class="btn btn-primary btn-lg" onclick="document.getElementById('settingsForm').dispatchEvent(new Event('submit'))">
                     <i class="fas fa-save me-2"></i>Save Settings
                 </button>
             </div>
-
-        </form>
+        </div>
 
         <!-- Test Notification Button -->
         <div class="card setting-card mb-4">
