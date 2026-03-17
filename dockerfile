@@ -2,6 +2,7 @@
 # These can be overridden at build time
 ARG GIT_REF=local
 ARG BUILD_DATE=$(date +%Y-%m-%d)
+ARG BUILD_VERSION=dev
 
 FROM mcr.microsoft.com/powershell:alpine-3.20
 
@@ -12,10 +13,10 @@ RUN mkdir -p /data
 RUN apk add --no-cache git >/dev/null 2>&1 || true
 
 # Try to get git info - check multiple possible locations
-RUN VERSION_FROM_GIT="unknown" && \
+RUN VERSION_FROM_GIT="$BUILD_VERSION" && \
     for GIT_DIR in "/github/workspace/.git" "/workspace/.git" ".git"; do \
         if [ -d "$GIT_DIR" ]; then \
-            cd "$(dirname $GIT_DIR)"; \
+            cd "$GIT_DIR/.."; \
             GIT_BRANCH=$(git rev-parse --abbrev-ref HEAD 2>/dev/null || echo "unknown"); \
             if [ "$GIT_BRANCH" = "main" ]; then PREFIX="MAIN"; \
             elif [ "$GIT_BRANCH" = "dev" ]; then PREFIX="DEV"; \
@@ -31,42 +32,7 @@ RUN VERSION_FROM_GIT="unknown" && \
     echo "$VERSION_FROM_GIT" > /data/version.txt; \
     echo "$BUILD_DATE" > /data/build_date.txt
 
-# Set environment variables
-ENV BUILD_VERSION=dev
-ENV BUILD_DATE=unknown
+# Set environment variables - use the BUILD_ARG value or fall back to git-derived version
+ENV BUILD_VERSION=${BUILD_VERSION}
+ENV BUILD_DATE=${BUILD_DATE}
 
-# Install necessary packages
-RUN apk update && \
-    apk add --no-cache supervisor docker-cli bash curl jq docker-cli-compose
-RUN pwsh -c Install-Module Pode -Force
-
-# Install regctl via edge testing repo
-RUN sed -i 's/https:\/\/dl-cdn.alpinelinux.org\/alpine\/[^/]*\/main/https:\/\/dl-cdn.alpinelinux.org\/alpine\/edge\/main/g' /etc/apk/repositories
-RUN sed -i 's/https:\/\/dl-cdn.alpinelinux.org\/alpine\/[^/]*\/community/https:\/\/dl-cdn.alpinelinux.org\/alpine\/edge\/community/g' /etc/apk/repositories
-RUN echo 'https://dl-cdn.alpinelinux.org/alpine/edge/testing' | tee -a /etc/apk/repositories
-RUN apk update && \
-    apk add --no-cache regclient
-
-# Create a working directory & copy the necessary files
-WORKDIR /data
-COPY ./data /data/
-
-# Make the entrypoint script executable
-RUN chmod 700 /data/entrypoint.sh
-RUN chmod +x /data/entrypoint.sh
-
-# Make the dockcheck.sh script executable
-RUN chmod 555 /data/dockcheck.sh
-RUN chmod +x /data/dockcheck.sh
-
-# Make a folder for logging
-RUN mkdir -p /var/log
-
-# Configure Supervisord
-RUN mkdir -p /var/log/supervisor
-
-# Create dir for DB
-RUN mkdir -p /data/db/
-
-# Set default command to run supervisord
-CMD ["supervisord", "-n", "-c", "/data/supervisord.conf"]
